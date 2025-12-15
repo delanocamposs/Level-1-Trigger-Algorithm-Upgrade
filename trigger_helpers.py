@@ -152,6 +152,16 @@ def get_gen_muons_vz(event,pt_min=0,pt_max=1000):
     vz=[float(g.vz()) for g in genhandle.product() if abs(g.pdgId())==13 and g.status()==1 and abs(g.eta())<1.3 and pt_min<g.pt()<pt_max]
     return vz
 
+def get_gen_muons_vx(event,pt_min=0,pt_max=1000):
+    event.getByLabel("genParticles", genhandle)
+    vz=[float(g.vx()) for g in genhandle.product() if abs(g.pdgId())==13 and g.status()==1 and abs(g.eta())<1.3 and pt_min<g.pt()<pt_max]
+    return vz
+
+def get_gen_muons_vy(event,pt_min=0,pt_max=1000):
+    event.getByLabel("genParticles", genhandle)
+    vz=[float(g.vy()) for g in genhandle.product() if abs(g.pdgId())==13 and g.status()==1 and abs(g.eta())<1.3 and pt_min<g.pt()<pt_max]
+    return vz
+
 def plot_slice_and_gaussian(h2, xbin, st, y_min=-0.5, y_max=0.5):
     name = h2.GetName()
 
