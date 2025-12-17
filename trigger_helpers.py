@@ -164,39 +164,30 @@ def get_gen_muons_vy(event,pt_min=0,pt_max=1000):
 
 def plot_slice_and_gaussian(h2, xbin, st, y_min=-0.5, y_max=0.5):
     name = h2.GetName()
-
-    h_int   = ROOT.gDirectory.Get(f"{name}_0")
-    h_mean  = ROOT.gDirectory.Get(f"{name}_1")
-    h_sigma = ROOT.gDirectory.Get(f"{name}_2")
-
-    A  = h_int.GetBinContent(xbin)
-    mu = h_mean.GetBinContent(xbin)
-    si = h_sigma.GetBinContent(xbin)
-
-    slice_name = f"{name}_slice_xbin{xbin}"
-    h_slice = h2.ProjectionY(slice_name, xbin, xbin)
-
-    g_name = f"{name}_gaus_xbin{xbin}"
+    h_int=ROOT.gDirectory.Get(f"{name}_0")
+    h_mean=ROOT.gDirectory.Get(f"{name}_1")
+    h_sigma=ROOT.gDirectory.Get(f"{name}_2")
+    A=h_int.GetBinContent(xbin)
+    mu=h_mean.GetBinContent(xbin)
+    si=h_sigma.GetBinContent(xbin)
+    slice_name= f"{name}_slice_xbin{xbin}"
+    h_slice =h2.ProjectionY(slice_name, xbin, xbin)
+    g_name =f"{name}_gaus_xbin{xbin}"
     g = ROOT.TF1(g_name, "gaus", y_min, y_max)
     g.SetParameters(A, mu, si)
-
     c = ROOT.TCanvas(f"c_{name}_xbin{xbin}", "", 800, 600)
-
-    xaxis = h2.GetXaxis()
-    x_low  = xaxis.GetBinLowEdge(xbin)
-    x_high = xaxis.GetBinUpEdge(xbin)
-
+    xaxis= h2.GetXaxis()
+    x_low= xaxis.GetBinLowEdge(xbin)
+    x_high= xaxis.GetBinUpEdge(xbin)
     h_slice.SetTitle(f"Station {st}: {x_low:.1f}<pt<{x_high:.1f} GeV;""#Delta z [cm];Entries")
     h_slice.SetLineColor(ROOT.kBlack)
     h_slice.SetMarkerStyle(20)
     h_slice.SetMarkerSize(1.0)
     h_slice.SetStats(0)
     h_slice.Draw()
-
     g.SetLineColor(ROOT.kRed)
     g.SetLineWidth(2)
     g.Draw("SAME")
-
     leg = ROOT.TLegend(0.65, 0.75, 0.89, 0.88)
     leg.SetBorderSize(0)
     leg.SetFillStyle(0)
@@ -204,9 +195,7 @@ def plot_slice_and_gaussian(h2, xbin, st, y_min=-0.5, y_max=0.5):
     leg.AddEntry(0, f"mean = {mu:.3f} cm", "")
     leg.SetTextSize(0.035)
     leg.Draw()
-
     c.leg=leg
-    c.Update()
     c.SaveAs(f"slice_bin{xbin}_station_{st}.png")
     c.Close()
     return c, h_slice, g
