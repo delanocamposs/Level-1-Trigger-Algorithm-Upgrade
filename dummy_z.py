@@ -39,21 +39,18 @@ def event_loop(event_num=100):
         if len(gen_pt_event)!=len(gen_eta_event):
             print("ERROR: size mismatch")
     
-        gen_pt_event_by_sta={st: [] for st in stations} #need this to keep stations and pT organized after matching
-        gen_eta_event_by_sta={st: [] for st in stations}
-        gen_vz_event_by_sta={st: [] for st in stations}
-        gen_z_event_by_sta={st: [] for st in stations}
-        gen_vr_event_by_sta={st: [] for st in stations}
-    
         #storing per event information about stub hits organized by station. 
         stub_eta_event={st: [] for st in stations} #filled with stub eta values from: station and z value.
         stub_indices_event={} #filled with indices of matched stubs to gen muons.
         stub_z_event={st: [] for st in stations} #filled with stub z value from knowing base z value from theta primitive.  
         stub_k_event={st: [] for st in stations} 
 
-        stub_eta_matched={st:len(gen_eta_event)*[None] for st in stations} #new stub eta values after matching. IMPORTANT TO KEEP NONE TYPES.
-        stub_z_matched={st:len(gen_eta_event)*[None] for st in stations} 
-        stub_k_matched={st:len(gen_eta_event)*[None] for st in stations} 
+        gen_pt_matched_by_sta={st: [] for st in stations} #need this to keep stations and pT organized after matching
+        gen_eta_matched_by_sta={st: [] for st in stations}
+        gen_vz_matched_by_sta={st: [] for st in stations}
+        gen_z_matched_by_sta={st: [] for st in stations}
+        gen_vr_matched_by_sta={st: [] for st in stations}
+
         stub_z_matched_by_sta={st:[] for st in stations} 
         stub_k_matched_by_sta={st:[] for st in stations} 
         stub_eta_matched_by_sta={st:[] for st in stations} 
@@ -67,60 +64,57 @@ def event_loop(event_num=100):
             st=int(stub.stNum())
             z_stub_cm=float(stub.z()/ZRES_CONV)
             k_stub=float(stub.k()/KRES_CONV)
+            eta_stub=eta_from_z(float(stub.z()/ZRES_CONV), R_MB_CM[st])
     
             stub_z_event[st].append(z_stub_cm)
             stub_k_event[st].append(k_stub)
-            eta_stub=eta_from_z(float(stub.z()/ZRES_CONV), R_MB_CM[st])
             stub_eta_event[st].append(eta_stub)
     
         #this loop begins the matching of gen to stub by closest eta. loop through each station and match stub to gen.
         for st in stations:
-            match_idx=match_indices_global(gen_eta_event, stub_eta_event[st]) #returns an array the size of gen_eta_event with the best indices of stub eta values that match.
-            stub_indices_event[st]=match_idx #throw the best indices per station to their respecitve location.
+            #crucial: match_indices_global returns an array the same size as the gen_eta_event array. if the muon doesnt have a stub to match, it reutrns index=None at the same index of the muon.
+            #example: gen_eta_event=[0.5,0.75,1.1], stub_eta_event[st]=[0.77,0.45]. the matching function will return: [1, 0, None]. muon 0 matched with stub 1. muon 1 matches with stub 0. muon 2 didnt match.
+            match_idx=match_indices_global(gen_eta_event, stub_eta_event[st]) 
+            stub_indices_event[st]=match_idx 
         
-            for mu_idx, stub_idx in enumerate(match_idx): #mu_idx is index of gen muon. stub_idx is best stub index.
-                mu_eta=gen_eta_event[mu_idx]            
-                mu_vz=gen_vz_event[mu_idx]
-                mu_vy=gen_vy_event[mu_idx]
-                mu_vx=gen_vx_event[mu_idx]
-                mu_vr=gen_vr_event[mu_idx]
-                gen_z_val=mu_vz+R_MB_CM[st]/(np.tan(2*np.arctan(np.exp(-1*mu_eta))))
+            #this is the loop where i ensure correct matching between gen muons and stub hits. indices are tracked:
+            for mu_idx, stub_idx in enumerate(match_idx):
+                if stub_idx is not None:
+                    mu_eta=gen_eta_event[mu_idx]            
+                    mu_vz=gen_vz_event[mu_idx]
+                    mu_vy=gen_vy_event[mu_idx]
+                    mu_vx=gen_vx_event[mu_idx]
+                    mu_vr=gen_vr_event[mu_idx]
+                    mu_pt=gen_pt_event[mu_idx]
+                    gen_z_val=mu_vz+R_MB_CM[st]/(np.tan(2*np.arctan(np.exp(-1*mu_eta))))
     
-                #this must be here to preserve size of gen_event arrays. None types should stay in the case of less stub hits than gen muons in a given station!
-                if stub_idx==None:
-                    continue
+                    gen_z_matched_by_sta[st].append(gen_z_val)
+                    gen_vz_matched_by_sta[st].append(mu_vz)
+                    gen_vr_matched_by_sta[st].append(mu_vr)
+                    gen_pt_matched_by_sta[st].append(mu_pt)
+                    gen_eta_matched_by_sta[st].append(mu_eta)
     
-                gen_z_event_by_sta[st].append(gen_z_val)
-                gen_vz_event_by_sta[st].append(mu_vz)
-                gen_vr_event_by_sta[st].append(mu_vr)
-                gen_pt_event_by_sta[st].append(gen_pt_event[mu_idx])
-                gen_eta_event_by_sta[st].append(gen_eta_event[mu_idx])
-    
-                stub_eta_matched[st][mu_idx]=stub_eta_event[st][stub_idx]
-                stub_z_matched[st][mu_idx]=stub_z_event[st][stub_idx]
-                stub_k_matched[st][mu_idx]=stub_k_event[st][stub_idx]
-                stub_eta_matched_by_sta[st].append(stub_eta_event[st][stub_idx])
-                stub_z_matched_by_sta[st].append(stub_z_matched[st][mu_idx])
-                stub_k_matched_by_sta[st].append(stub_k_matched[st][mu_idx])
+                    stub_eta_matched_by_sta[st].append(stub_eta_event[st][stub_idx])
+                    stub_z_matched_by_sta[st].append(stub_z_event[st][stub_idx])
+                    stub_k_matched_by_sta[st].append(stub_k_event[st][stub_idx])
 
-                mu_id=(i<<16)|mu_idx
-                mu_id_by_st[st].append(mu_id)
+                    #this is so each muon can have a unique identifier that depends on the event #, mu_idx in the event.    
+                    #of course only true if num muons per event <= 2**16 which obviously will be true
+                    mu_id=(i<<16)|mu_idx
+                    mu_id_by_st[st].append(mu_id)
     
         for st in stations:  
-            gen_eta_glob[st].extend(np.array(gen_eta_event_by_sta[st]))
-            gen_vz_glob[st].extend(np.array(gen_vz_event_by_sta[st]))
-            gen_vr_glob[st].extend(np.array(gen_vr_event_by_sta[st]))
-            gen_z_glob[st].extend(np.array(gen_z_event_by_sta[st]))
-            gen_pt_glob[st].extend(np.array(gen_pt_event_by_sta[st]))
+            gen_eta_glob[st].extend(np.array(gen_eta_matched_by_sta[st]))
+            gen_vz_glob[st].extend(np.array(gen_vz_matched_by_sta[st]))
+            gen_vr_glob[st].extend(np.array(gen_vr_matched_by_sta[st]))
+            gen_z_glob[st].extend(np.array(gen_z_matched_by_sta[st]))
+            gen_pt_glob[st].extend(np.array(gen_pt_matched_by_sta[st]))
     
             stub_z_glob[st].extend(np.array(stub_z_matched_by_sta[st]))
             stub_k_glob[st].extend(np.array(stub_k_matched_by_sta[st]))
-
-            delta_z_glob[st].extend(np.array(gen_z_event_by_sta[st])-np.array(stub_z_matched_by_sta[st]))
-
+            delta_z_glob[st].extend(np.array(gen_z_matched_by_sta[st])-np.array(stub_z_matched_by_sta[st]))
             stub_eta_glob[st].extend(np.array(stub_eta_matched_by_sta[st]))
             mu_id_glob[st].extend(np.array(mu_id_by_st[st])) 
     
-    print(f"successful event loop. events: {event_num}")
     return_dict={"gen_eta":gen_eta_glob, "gen_pt":gen_pt_glob, "gen_z":gen_z_glob, "stub_z":stub_z_glob, "delta_z":delta_z_glob, "gen_vz":gen_vz_glob, "gen_vr":gen_vr_glob, "stub_k":stub_k_glob, "stub_eta":stub_eta_glob, "mu_id":mu_id_glob}
     return return_dict

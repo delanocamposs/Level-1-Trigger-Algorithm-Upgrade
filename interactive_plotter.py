@@ -102,13 +102,13 @@ def plot_deltak_and_profile_vs_eta(data,st1,st2):
     h=ROOT.TH2F(f"h_dk_eta_{st1}_{st2}",f"k_{st2}-k_{st1} vs stub #eta_{st1};stub #eta;#Delta k",60,-1.3,1.3,80,-1.0,1.0)
     h.SetDirectory(0)
     m1={}
-    for uid,k,eta in zip(data["mu_id"][st1],data["stub_k"][st1],data["stub_eta"][st1]):
-        if uid not in m1:
-            m1[uid]=(k,eta)
-    for uid,k2 in zip(data["mu_id"][st2],data["stub_k"][st2]):
-        if uid not in m1:
+    for muid,k,eta in zip(data["mu_id"][st1],data["stub_k"][st1],data["stub_eta"][st1]):
+        if muid not in m1:
+            m1[muid]=(k,eta)
+    for muid,k2 in zip(data["mu_id"][st2],data["stub_k"][st2]):
+        if muid not in m1:
             continue
-        k1,eta1=m1[uid]
+        k1,eta1=m1[muid]
         h.Fill(eta1,k2-k1)
     c1=ROOT.TCanvas(f"c_dk_eta_{st1}_{st2}","",900,700)
     h.SetStats(0)
@@ -129,7 +129,90 @@ def plot_deltak_and_profile_vs_eta(data,st1,st2):
     store_plots["profiles"][f"dkprof_vs_eta1_{st1}_{st2}"]=p
     return c1,c2,h,p
 
+def plot_dz_vs_1_over_k1(data,st1,st2):
+    h=ROOT.TH2F(f"h_dz_invk_{st1}_{st2}",f"z{st2}-z{st1} vs 1/k{st1};1/k{st1};#Delta z (z{st2}-z{st1})",100,-5,5,100,-500,500)
+    h.SetDirectory(0)
+    m1={}
+    for muid,k1,z1 in zip(data["mu_id"][st1],data["stub_k"][st1],data["stub_z"][st1]):
+        if muid not in m1:
+            m1[muid]=(k1,z1)
+    #print("m1: ",m1)
+    for muid,z2 in zip(data["mu_id"][st2],data["stub_z"][st2]):
+        if muid not in m1:
+            continue
+        k1,z1=m1[muid]
+        #min value to avoiud blowing up 1/k
+        if abs(k1)<0.01:
+            continue
+        h.Fill(1.0/k1,z2-z1)
+    c1=ROOT.TCanvas(f"c_dz_1_over_k{st1}_MB{st1}_MB{st2}","",900,700)
+    h.SetStats(0)
+    h.Draw("COLZ")
+    c1.Update()
+    c1.SaveAs(f"dz_vs_1_over_k{st1}_MB{st2}_MB{st1}.png")
+    p=h.ProfileX()
+    p.SetStats(0)
+    p.SetLineWidth(2)
+    p.SetTitle(f"<z{st2}-z{st1}> vs stub 1/k{st1};1/k{st1};<#Delta z>")
+    c2=ROOT.TCanvas(f"c_dzprofile_1_over_k{st1}_MB{st1}_MB{st2}","",900,700)
+    p.Draw("E")
+    c2.Update()
+    c2.SaveAs(f"dz_profile_vs_1_over_k{st1}_MB{st2}_MB{st1}.png")
+    store_plots["canvas"][f"dz_vs_1_over_k{st1}_MB{st1}_MB{st2}"]=c1
+    store_plots["canvas"][f"dzprof_vs_1_over_k{st1}_MB{st1}_MB{st2}"]=c2
+    store_plots["histos"][f"dz_vs_1_over_k{st1}_MB{st1}_MB{st2}"]=h
+    store_plots["profiles"][f"dzprof_vs_1_over_k{st1}_{st1}_{st2}"]=p
+    return c1,c2,h,p
+
+def plot_dz_vs_k1(data,st1,st2):
+    h=ROOT.TH2F(f"h_dz_invk_{st1}_{st2}",f"z{st2}-z{st1} vs k{st1};k{st1};#Delta z (z{st2}-z{st1})",100,-1.75,1.75,100,-250,250)
+    h.SetDirectory(0)
+    m1={}
+    for muid,k1,z1 in zip(data["mu_id"][st1],data["stub_k"][st1],data["stub_z"][st1]):
+        if muid not in m1:
+            m1[muid]=(k1,z1)
+    #print("m1: ",m1)
+    for muid,z2 in zip(data["mu_id"][st2],data["stub_z"][st2]):
+        if muid not in m1:
+            continue
+        k1,z1=m1[muid]
+        h.Fill(k1,z2-z1)
+    c1=ROOT.TCanvas(f"c_dz_vs_k{st1}_MB{st1}_MB{st2}","",900,700)
+    h.SetStats(0)
+    h.Draw("COLZ")
+    c1.Update()
+    c1.SaveAs(f"dz_vs_k{st1}_MB{st2}_MB{st1}.png")
+    p=h.ProfileX()
+    p.SetStats(0)
+    p.SetLineWidth(2)
+    p.SetTitle(f"<z{st2}-z{st1}> vs k{st1};k{st1};<#Delta z>")
+    c2=ROOT.TCanvas(f"c_dzprofile_k{st1}_MB{st1}_MB{st2}","",900,700)
+    p.Draw("E")
+    x_min=p.GetXaxis().GetXmin()
+    x_max=p.GetXaxis().GetXmax()
+    f_lin=ROOT.TF1(f"f_lin_{st1}_{st2}", "pol1", x_min, x_max)
+    f_lin.SetLineColor(ROOT.kRed)
+    f_lin.SetLineWidth(2)
+    fitres=p.Fit(f_lin, "SQR")
+    p0=f_lin.GetParameter(0)
+    p1=f_lin.GetParameter(1)
+    p0e=f_lin.GetParError(0)
+    p1e=f_lin.GetParError(1)
+    p.Draw("E")
+    f_lin.Draw("same")
+    txt=ROOT.TLatex()
+    txt.SetNDC(True)
+    txt.SetTextSize(0.035)
+    txt.DrawLatex(0.15,0.80,f"slope={p1:.3g} #pm {p1e:.2g} cm")
+    txt.DrawLatex(0.15,0.75,f"int={p0:.3g} #pm {p0e:.2g} cm")
+    c2.Update()
+    c2.SaveAs(f"dz_profile_vs_k{st1}_MB{st2}_MB{st1}.png")
+    store_plots["canvas"][f"dz_vs_k{st1}_MB{st1}_MB{st2}"]=c1
+    store_plots["canvas"][f"dzprof_vs_k{st1}_MB{st1}_MB{st2}"]=c2
+    store_plots["histos"][f"dz_vs_k{st1}_MB{st1}_MB{st2}"]=h
+    store_plots["profiles"][f"dzprof_vs_k{st1}_{st1}_{st2}"]=p
+    return c1,c2,h,p
+ 
+    
 if __name__=="__main__":
     data=event_loop()
-    
-

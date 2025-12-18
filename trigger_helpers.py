@@ -78,47 +78,30 @@ def match_indices_local(listA, listB, max_diff=float("inf")):
         used_stubs.add(j)
     return match_idx
 
-def match_indices_global(listA, listB, max_diff=0.3):
-    nA = len(listA)
-    nB = len(listB)
-    match_idx = [None] * nA
-    if nA == 0 or nB == 0:
+def match_indices_global(listA,listB,max_diff=0.3):
+    nA=len(listA)
+    nB=len(listB)
+    match_idx=[None]*nA
+    if nA==0 or nB==0:
         return match_idx
-    if nA <= nB and nA <= 6:
-        best_perm = None
-        best_cost = float("inf")
-        for stub_perm in permutations(range(nB), nA):
-            cost = 0.0
-            for i in range(nA):
-                cost += abs(listA[i] - listB[stub_perm[i]])
-            if cost < best_cost:
-                best_cost = cost
-                best_perm = stub_perm
-        for i in range(nA):
-            j = best_perm[i]
-            if abs(listA[i] - listB[j]) <= max_diff:
-                match_idx[i] = j
-            else:
-                match_idx[i] = None
-        return match_idx
-    pairs = []
-    for i, a in enumerate(listA):
-        for j, b in enumerate(listB):
-            diff = abs(a - b)
-            if diff <= max_diff:
-                pairs.append((diff, i, j))
-    pairs.sort(key=lambda x: x[0])
-    used_muons = set()
-    used_stubs = set()
-    for diff, i, j in pairs:
-        if i in used_muons or j in used_stubs:
+    pairs=[]
+    for i,a in enumerate(listA):
+        for j,b in enumerate(listB):
+            d=abs(a-b)
+            if d<=max_diff:
+                pairs.append((d,i,j))
+    pairs.sort(key=lambda x:x[0])
+    usedA=set()
+    usedB=set()
+    for d,i,j in pairs:
+        if i in usedA or j in usedB:
             continue
-        match_idx[i] = j
-        used_muons.add(i)
-        used_stubs.add(j)
+        match_idx[i]=j
+        usedA.add(i)
+        usedB.add(j)
     return match_idx
-
     
+
 def get_gen_muons_eta(event,pt_min=0,pt_max=1000):
     event.getByLabel("genParticles", genhandle)
     val=[float(g.eta()) for g in genhandle.product() if abs(g.pdgId()) == 13 and g.status() == 1 and abs(g.eta())<1.3 and pt_min<g.pt()<pt_max]
