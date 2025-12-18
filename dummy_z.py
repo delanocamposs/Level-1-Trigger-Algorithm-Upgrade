@@ -16,7 +16,7 @@ stations=(1,2,3)
 ZRES_CONV=65536.0/1500.0
 KRES_CONV=65536.0/2
 
-def event_loop(event_num=100):
+def event_loop(event_num=100, conv_z=True, conv_k=True):
     gen_eta_glob, gen_z_glob, gen_pt_glob, gen_vz_glob, gen_vr_glob={st: [] for st in stations}, {st: [] for st in stations}, {st: [] for st in stations}, {st:[] for st in stations}, {st:[] for st in stations}
     stub_eta_glob, stub_z_glob, stub_k_glob={st: [] for st in stations}, {st: [] for st in stations}, {st:[] for st in stations}
     delta_z_glob={st:[] for st in stations}
@@ -62,12 +62,15 @@ def event_loop(event_num=100):
         #stub eta, stub theta and store in above arrays
         for stub in container:
             st=int(stub.stNum())
-            z_stub_cm=float(stub.z()/ZRES_CONV)
-            k_stub=float(stub.k()/KRES_CONV)
-            eta_stub=eta_from_z(float(stub.z()/ZRES_CONV), R_MB_CM[st])
+            z_raw=stub.z()
+            k_raw=stub.k()
+            z_phys=z_raw/ZRES_CONV
+            k_phys=k_raw/KRES_CONV 
+
+            eta_stub=eta_from_z(z_phys, R_MB_CM[st])
     
-            stub_z_event[st].append(z_stub_cm)
-            stub_k_event[st].append(k_stub)
+            stub_z_event[st].append(z_phys if conv_z else z_raw)
+            stub_k_event[st].append(k_phys if conv_k else k_raw)
             stub_eta_event[st].append(eta_stub)
     
         #this loop begins the matching of gen to stub by closest eta. loop through each station and match stub to gen.
