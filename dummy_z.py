@@ -118,6 +118,6 @@ def event_loop(event_num=100, conv_z=True, conv_k=True):
             delta_z_glob[st].extend(np.array(gen_z_matched_by_sta[st])-np.array(stub_z_matched_by_sta[st]))
             stub_eta_glob[st].extend(np.array(stub_eta_matched_by_sta[st]))
             mu_id_glob[st].extend(np.array(mu_id_by_st[st])) 
-    
+    print(f"successful event loop. events: {event_num}")
     return_dict={"gen_eta":gen_eta_glob, "gen_pt":gen_pt_glob, "gen_z":gen_z_glob, "stub_z":stub_z_glob, "delta_z":delta_z_glob, "gen_vz":gen_vz_glob, "gen_vr":gen_vr_glob, "stub_k":stub_k_glob, "stub_eta":stub_eta_glob, "mu_id":mu_id_glob}
     return return_dict
