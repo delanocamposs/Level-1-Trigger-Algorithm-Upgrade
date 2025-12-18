@@ -130,7 +130,7 @@ def plot_deltak_and_profile_vs_eta(data,st1,st2):
     return c1,c2,h,p
 
 def plot_dz_vs_1_over_k1(data,st1,st2):
-    h=ROOT.TH2F(f"h_dz_invk_{st1}_{st2}",f"z{st2}-z{st1} vs 1/k{st1};1/k{st1};#Delta z (z{st2}-z{st1})",100,-5,5,100,-300,300)
+    h=ROOT.TH2F(f"h_dz_invk_{st1}_{st2}",f"z{st1}-z{st2} vs 1/k{st2};1/k{st2};#Delta z (z{st1}-z{st2})",100,-5,5,100,-300,300)
     h.SetDirectory(0)
     m1={}
     for muid,k2,z2 in zip(data["mu_id"][st2],data["stub_k"][st2],data["stub_z"][st2]):
@@ -145,52 +145,54 @@ def plot_dz_vs_1_over_k1(data,st1,st2):
         if abs(k2)<0.001:
             continue
         h.Fill(1.0/k2,z1-z2)
-    c1=ROOT.TCanvas(f"c_dz_1_over_k{st1}_MB{st1}_MB{st2}","",900,700)
+    c1=ROOT.TCanvas(f"c_dz_1_over_k{st2}_MB{st1}_MB{st2}","",900,700)
     h.SetStats(0)
     h.Draw("COLZ")
     c1.Update()
-    c1.SaveAs(f"dz_vs_1_over_k{st1}_MB{st2}_MB{st1}.png")
+    c1.SaveAs(f"dz_vs_1_over_k{st2}_MB{st2}_MB{st1}.png")
     p=h.ProfileX()
     p.SetStats(0)
     p.SetLineWidth(2)
-    p.SetTitle(f"<z{st2}-z{st1}> vs stub 1/k{st1};1/k{st1};<#Delta z>")
-    c2=ROOT.TCanvas(f"c_dzprofile_1_over_k{st1}_MB{st1}_MB{st2}","",900,700)
+    p.SetTitle(f"<z{st1}-z{st2}> vs stub 1/k{st2};1/k{st2};<#Delta z>")
+    c2=ROOT.TCanvas(f"c_dzprofile_1_over_k{st2}_MB{st1}_MB{st2}","",900,700)
     p.Draw("E")
     c2.Update()
-    c2.SaveAs(f"dz_profile_vs_1_over_k{st1}_MB{st2}_MB{st1}.png")
-    store_plots["canvas"][f"dz_vs_1_over_k{st1}_MB{st1}_MB{st2}"]=c1
-    store_plots["canvas"][f"dzprof_vs_1_over_k{st1}_MB{st1}_MB{st2}"]=c2
-    store_plots["histos"][f"dz_vs_1_over_k{st1}_MB{st1}_MB{st2}"]=h
-    store_plots["profiles"][f"dzprof_vs_1_over_k{st1}_{st1}_{st2}"]=p
+    c2.SaveAs(f"dz_profile_vs_1_over_k{st2}_MB{st2}_MB{st1}.png")
+    store_plots["canvas"][f"dz_vs_1_over_k{st2}_MB{st1}_MB{st2}"]=c1
+    store_plots["canvas"][f"dzprof_vs_1_over_k{st2}_MB{st1}_MB{st2}"]=c2
+    store_plots["histos"][f"dz_vs_1_over_k{st2}_MB{st1}_MB{st2}"]=h
+    store_plots["profiles"][f"dzprof_vs_1_over_k{st2}_{st1}_{st2}"]=p
     return c1,c2,h,p
 
-def plot_dz_vs_k1(data,st1,st2):
-    h=ROOT.TH2F(f"h_dz_invk_{st1}_{st2}",f"z{st2}-z{st1} vs k{st1};k{st1};#Delta z (z{st2}-z{st1})",100,-1.75,1.75,100,-250,250)
+def plot_st1_to_vtx_vs_k1(data,conv_z=True, conv_k=True):
+    if conv_k and conv_z:
+        h=ROOT.TH2F(f"h_dz_invk_st1_vtx",f"z_vtx-z1 vs k1;k1;#Delta z (z_vtx-z1)",100,-1.75,1.75,100,-250,250)
+    else:
+        h=ROOT.TH2F(f"h_dz_invk_st1_vtx",f"z_vtx-z1 vs k1;k1;#Delta z (z_vtx-z1)",100,-50000,50000,100,-40000,40000)
     h.SetDirectory(0)
     m1={}
-    for muid,k2,z2 in zip(data["mu_id"][st2],data["stub_k"][st2],data["stub_z"][st2]):
+    for muid,k2,z2 in zip(data["mu_id"][1],data["stub_k"][1],data["stub_z"][1]):
         if muid not in m1:
             m1[muid]=(k2,z2)
-    #print("m1: ",m1)
-    for muid,z1 in zip(data["mu_id"][st1],data["stub_z"][st1]):
+    for muid,z1 in zip(data["mu_id"][1],data["gen_vz"][1]):
         if muid not in m1:
             continue
         k2,z2=m1[muid]
         h.Fill(k2,z1-z2)
-    c1=ROOT.TCanvas(f"c_dz_vs_k{st1}_MB{st1}_MB{st2}","",900,700)
+    c1=ROOT.TCanvas(f"c_dz_vs_k1_MB1_vtx","",900,700)
     h.SetStats(0)
     h.Draw("COLZ")
     c1.Update()
-    c1.SaveAs(f"dz_vs_k{st1}_MB{st2}_MB{st1}.png")
+    c1.SaveAs(f"dz_vs_k1_MB1_vtx.png")
     p=h.ProfileX()
     p.SetStats(0)
     p.SetLineWidth(2)
-    p.SetTitle(f"<z{st2}-z{st1}> vs k{st1};k{st1};<#Delta z>")
-    c2=ROOT.TCanvas(f"c_dzprofile_k{st1}_MB{st1}_MB{st2}","",900,700)
+    p.SetTitle(f"<z_vtx-z1> vs k1;k1;<#Delta z>")
+    c2=ROOT.TCanvas(f"c_dzprofile_k1_MB1_vtx","",900,700)
     p.Draw("E")
     x_min=p.GetXaxis().GetXmin()
     x_max=p.GetXaxis().GetXmax()
-    f_lin=ROOT.TF1(f"f_lin_{st1}_{st2}", "pol1", x_min, x_max)
+    f_lin=ROOT.TF1(f"f_lin_MB1_vtx", "pol1", x_min, x_max)
     f_lin.SetLineColor(ROOT.kRed)
     f_lin.SetLineWidth(2)
     fitres=p.Fit(f_lin, "SQR")
@@ -203,14 +205,19 @@ def plot_dz_vs_k1(data,st1,st2):
     txt=ROOT.TLatex()
     txt.SetNDC(True)
     txt.SetTextSize(0.035)
-    txt.DrawLatex(0.15,0.80,f"slope={p1:.3g} #pm {p1e:.2g} cm")
-    txt.DrawLatex(0.15,0.75,f"int={p0:.3g} #pm {p0e:.2g} cm")
+    if conv_k and conv_z:
+        txt.DrawLatex(0.15,0.80,f"slope={p1:.3g} cm #pm {p1e:.2g} cm")
+        txt.DrawLatex(0.15,0.75,f"int={p0:.3g} cm #pm {p0e:.2g} cm")
+    else:
+        txt.DrawLatex(0.15,0.80,f"slope={p1:.3g} #pm {p1e:.2g}")
+        txt.DrawLatex(0.15,0.75,f"int={p0:.3g} #pm {p0e:.2g}")
+
     c2.Update()
-    c2.SaveAs(f"dz_profile_vs_k{st1}_MB{st2}_MB{st1}.png")
-    store_plots["canvas"][f"dz_vs_k{st1}_MB{st1}_MB{st2}"]=c1
-    store_plots["canvas"][f"dzprof_vs_k{st1}_MB{st1}_MB{st2}"]=c2
-    store_plots["histos"][f"dz_vs_k{st1}_MB{st1}_MB{st2}"]=h
-    store_plots["profiles"][f"dzprof_vs_k{st1}_{st1}_{st2}"]=p
+    c2.SaveAs(f"dz_profile_vs_k1_MB1_vtx.png")
+    store_plots["canvas"][f"dz_vs_k1_MB1_vtx"]=c1
+    store_plots["canvas"][f"dzprof_vs_k1_MB1_vtx"]=c2
+    store_plots["histos"][f"dz_vs_k1_MB1_vtx"]=h
+    store_plots["profiles"][f"dzprof_vs_k1_MB1_vtx"]=p
     return c1,c2,h,p
  
     
