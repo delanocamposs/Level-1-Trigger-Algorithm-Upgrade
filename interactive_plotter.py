@@ -130,21 +130,21 @@ def plot_deltak_and_profile_vs_eta(data,st1,st2):
     return c1,c2,h,p
 
 def plot_dz_vs_1_over_k1(data,st1,st2):
-    h=ROOT.TH2F(f"h_dz_invk_{st1}_{st2}",f"z{st2}-z{st1} vs 1/k{st1};1/k{st1};#Delta z (z{st2}-z{st1})",100,-5,5,100,-500,500)
+    h=ROOT.TH2F(f"h_dz_invk_{st1}_{st2}",f"z{st2}-z{st1} vs 1/k{st1};1/k{st1};#Delta z (z{st2}-z{st1})",100,-5,5,100,-300,300)
     h.SetDirectory(0)
     m1={}
-    for muid,k1,z1 in zip(data["mu_id"][st1],data["stub_k"][st1],data["stub_z"][st1]):
+    for muid,k2,z2 in zip(data["mu_id"][st2],data["stub_k"][st2],data["stub_z"][st2]):
         if muid not in m1:
-            m1[muid]=(k1,z1)
+            m1[muid]=(k2,z2)
     #print("m1: ",m1)
-    for muid,z2 in zip(data["mu_id"][st2],data["stub_z"][st2]):
+    for muid,z1 in zip(data["mu_id"][st1],data["stub_z"][st1]):
         if muid not in m1:
             continue
-        k1,z1=m1[muid]
+        k2,z2=m1[muid]
         #min value to avoiud blowing up 1/k
-        if abs(k1)<0.01:
+        if abs(k2)<0.001:
             continue
-        h.Fill(1.0/k1,z2-z1)
+        h.Fill(1.0/k2,z1-z2)
     c1=ROOT.TCanvas(f"c_dz_1_over_k{st1}_MB{st1}_MB{st2}","",900,700)
     h.SetStats(0)
     h.Draw("COLZ")
@@ -168,15 +168,15 @@ def plot_dz_vs_k1(data,st1,st2):
     h=ROOT.TH2F(f"h_dz_invk_{st1}_{st2}",f"z{st2}-z{st1} vs k{st1};k{st1};#Delta z (z{st2}-z{st1})",100,-1.75,1.75,100,-250,250)
     h.SetDirectory(0)
     m1={}
-    for muid,k1,z1 in zip(data["mu_id"][st1],data["stub_k"][st1],data["stub_z"][st1]):
+    for muid,k2,z2 in zip(data["mu_id"][st2],data["stub_k"][st2],data["stub_z"][st2]):
         if muid not in m1:
-            m1[muid]=(k1,z1)
+            m1[muid]=(k2,z2)
     #print("m1: ",m1)
-    for muid,z2 in zip(data["mu_id"][st2],data["stub_z"][st2]):
+    for muid,z1 in zip(data["mu_id"][st1],data["stub_z"][st1]):
         if muid not in m1:
             continue
-        k1,z1=m1[muid]
-        h.Fill(k1,z2-z1)
+        k2,z2=m1[muid]
+        h.Fill(k2,z1-z2)
     c1=ROOT.TCanvas(f"c_dz_vs_k{st1}_MB{st1}_MB{st2}","",900,700)
     h.SetStats(0)
     h.Draw("COLZ")
