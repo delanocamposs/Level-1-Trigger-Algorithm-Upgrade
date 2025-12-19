@@ -41,7 +41,7 @@ def plot_slice_and_gaussian(h2, xbin, st, xvar,xunit,yvar,yunit,y_min=-0.5, y_ma
     leg.SetTextSize(0.035)
     leg.Draw()
     c.leg=leg
-    c.SaveAs(f"{direc}/slice_bin{xbin}_station_{st}.png")
+    c.SaveAs(f"{direc}/slice{yvar}_vs_{xvar}_bin{xbin}_station_{st}.png")
     c.Close()
     return c, h_slice, g
 
