@@ -15,9 +15,10 @@ R_MB_CM={1:445.0,2:526,3:635}
 stations=(1,2,3)
 ZRES_CONV=65536.0/1500.0
 KRES_CONV=65536.0/2
+CURV_CONV=(1<<15)/1.25
 
 def event_loop(event_num=100, conv_z=True, conv_k=True):
-    gen_eta_glob, gen_z_glob, gen_pt_glob, gen_vz_glob, gen_vr_glob={st: [] for st in stations}, {st: [] for st in stations}, {st: [] for st in stations}, {st:[] for st in stations}, {st:[] for st in stations}
+    gen_eta_glob, gen_z_glob, gen_pt_glob, gen_vz_glob, gen_vr_glob, gen_curv_glob={st: [] for st in stations}, {st: [] for st in stations}, {st: [] for st in stations}, {st:[] for st in stations}, {st:[] for st in stations}, {st:[] for st in stations}
     stub_eta_glob, stub_z_glob, stub_k_glob={st: [] for st in stations}, {st: [] for st in stations}, {st:[] for st in stations}
     delta_z_glob={st:[] for st in stations}
     mu_id_glob={st:[] for st in stations}
@@ -35,6 +36,7 @@ def event_loop(event_num=100, conv_z=True, conv_k=True):
         gen_vy_event=get_gen_muons_vy(event,pt_min=0,pt_max=1000)
         gen_vx_event=get_gen_muons_vx(event,pt_min=0,pt_max=1000)
         gen_vr_event=np.sqrt((np.array(gen_vx_event))**2+(np.array(gen_vy_event))**2)
+        gen_curv_event=get_gen_muons_curv(event, pt_min=0, pt_max=1000)
     
         if len(gen_pt_event)!=len(gen_eta_event):
             print("ERROR: size mismatch")
@@ -50,6 +52,7 @@ def event_loop(event_num=100, conv_z=True, conv_k=True):
         gen_vz_matched_by_sta={st: [] for st in stations}
         gen_z_matched_by_sta={st: [] for st in stations}
         gen_vr_matched_by_sta={st: [] for st in stations}
+        gen_curv_matched_by_sta={st: [] for st in stations}
 
         stub_z_matched_by_sta={st:[] for st in stations} 
         stub_k_matched_by_sta={st:[] for st in stations} 
@@ -89,6 +92,7 @@ def event_loop(event_num=100, conv_z=True, conv_k=True):
                     mu_vx=gen_vx_event[mu_idx]
                     mu_vr=gen_vr_event[mu_idx]
                     mu_pt=gen_pt_event[mu_idx]
+                    mu_curv=CURV_CONV*gen_curv_event[mu_idx]
                     gen_z_val=mu_vz+R_MB_CM[st]/(np.tan(2*np.arctan(np.exp(-1*mu_eta))))
     
                     gen_z_matched_by_sta[st].append(gen_z_val)
@@ -96,6 +100,7 @@ def event_loop(event_num=100, conv_z=True, conv_k=True):
                     gen_vr_matched_by_sta[st].append(mu_vr)
                     gen_pt_matched_by_sta[st].append(mu_pt)
                     gen_eta_matched_by_sta[st].append(mu_eta)
+                    gen_curv_matched_by_sta[st].append(mu_curv)
     
                     stub_eta_matched_by_sta[st].append(stub_eta_event[st][stub_idx])
                     stub_z_matched_by_sta[st].append(stub_z_event[st][stub_idx])
@@ -112,6 +117,7 @@ def event_loop(event_num=100, conv_z=True, conv_k=True):
             gen_vr_glob[st].extend(np.array(gen_vr_matched_by_sta[st]))
             gen_z_glob[st].extend(np.array(gen_z_matched_by_sta[st]))
             gen_pt_glob[st].extend(np.array(gen_pt_matched_by_sta[st]))
+            gen_curv_glob[st].extend(np.array(gen_curv_matched_by_sta[st]))
     
             stub_z_glob[st].extend(np.array(stub_z_matched_by_sta[st]))
             stub_k_glob[st].extend(np.array(stub_k_matched_by_sta[st]))
@@ -119,5 +125,5 @@ def event_loop(event_num=100, conv_z=True, conv_k=True):
             stub_eta_glob[st].extend(np.array(stub_eta_matched_by_sta[st]))
             mu_id_glob[st].extend(np.array(mu_id_by_st[st])) 
     print(f"successful event loop. events: {event_num}")
-    return_dict={"gen_eta":gen_eta_glob, "gen_pt":gen_pt_glob, "gen_z":gen_z_glob, "stub_z":stub_z_glob, "delta_z":delta_z_glob, "gen_vz":gen_vz_glob, "gen_vr":gen_vr_glob, "stub_k":stub_k_glob, "stub_eta":stub_eta_glob, "mu_id":mu_id_glob}
+    return_dict={"gen_eta":gen_eta_glob, "gen_pt":gen_pt_glob, "gen_z":gen_z_glob, "stub_z":stub_z_glob, "delta_z":delta_z_glob, "gen_vz":gen_vz_glob, "gen_vr":gen_vr_glob, "stub_k":stub_k_glob, "stub_eta":stub_eta_glob, "mu_id":mu_id_glob, "gen_curv":gen_curv_glob}
     return return_dict
