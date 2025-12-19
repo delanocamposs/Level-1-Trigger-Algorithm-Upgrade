@@ -280,7 +280,9 @@ def plot_st1_to_vtx_vs_k1(data,conv_z=True, conv_k=True):
     store_plots["profiles"][f"dzprof_vs_k1_MB1_vtx"]=p
     return c1,c2,h,p
 
-def plot_deltak_vs_curv(data,st):
+def plot_deltak_vs_curv(data,st,show=True):
+    if not show:
+        ROOT.gROOT.SetBatch(True)
     direc=make_plot_dir("deltak_vs_curv")
     c=ROOT.TCanvas(f"c_dk_curv_{st}","",800,600)
     h=ROOT.TH2F(f"h_dk_curv_{st}",f"(k_{{pred,{st}}}-k_{{meas,{st}}}) vs curvature;gen q/p_{{T}};#Delta k (k_{{pred,{st}}}-k_{{meas,{st}}})",100,-10000,10000,100,-15000,15000)
@@ -298,7 +300,8 @@ def plot_deltak_vs_curv(data,st):
         k_pred=1*k0
         h.Fill(curv, k_pred-k_meas)
     h.SetStats(0)
-    h.Draw("COLZ")
+    if show:
+        h.Draw("COLZ")
     store_plots["canvas"][f"deltak_vs_curv_{st}"]=c
     store_plots["histos"][f"deltak_vs_curv_{st}"]=h
     print(f"histo name stored: deltak_vs_curv_{st}")
