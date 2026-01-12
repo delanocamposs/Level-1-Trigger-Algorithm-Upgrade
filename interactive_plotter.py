@@ -6,44 +6,97 @@ import os
 
 store_plots={"canvas":{}, "histos":{}, "fits":{}, "profiles":{}}
 
-def plot_slice_and_gaussian(h2, xbin, st, xvar,xunit,yvar,yunit,y_min=-0.5, y_max=0.5):
+#def plot_slice_and_gaussian(h2, xbin, st, xvar,xunit,yvar,yunit,y_min=-0.5, y_max=0.5):
+#    direc=make_plot_dir(f"gaussianfit_slices_{yvar}_vs_{xvar}")
+#    name = h2.GetName()
+#    h_int=ROOT.gDirectory.Get(f"{name}_0")
+#    h_mean=ROOT.gDirectory.Get(f"{name}_1")
+#    h_sigma=ROOT.gDirectory.Get(f"{name}_2")
+#    A=h_int.GetBinContent(xbin)
+#    mu=h_mean.GetBinContent(xbin)
+#    si=h_sigma.GetBinContent(xbin)
+#    slice_name= f"{name}_slice_xbin{xbin}"
+#    h_slice =h2.ProjectionY(slice_name, xbin, xbin)
+#    g_name =f"{name}_gaus_xbin{xbin}"
+#    g = ROOT.TF1(g_name, "gaus", y_min, y_max)
+#    g.SetParameters(A, mu, si)
+#    c = ROOT.TCanvas(f"c_{name}_xbin{xbin}", "", 800, 600)
+#    xaxis= h2.GetXaxis()
+#    x_low= xaxis.GetBinLowEdge(xbin)
+#    x_high= xaxis.GetBinUpEdge(xbin)
+#    h_slice.SetTitle(f"Station {st}: {x_low:.1f}<{xvar}<{x_high:.1f} [{xunit}];{yvar} [{yunit}];Entries")
+#    h_slice.SetLineColor(ROOT.kBlack)
+#    h_slice.SetMarkerStyle(20)
+#    h_slice.SetMarkerSize(1.0)
+#    h_slice.SetStats(0)
+#    h_slice.Draw()
+#    g.SetLineColor(ROOT.kRed)
+#    g.SetLineWidth(2)
+#    g.Draw("SAME")
+#    leg = ROOT.TLegend(0.65, 0.75, 0.89, 0.88)
+#    leg.SetBorderSize(0)
+#    leg.SetFillStyle(0)
+#    leg.AddEntry(0, f"#sigma = {si:.3f} {yunit}", "")
+#    leg.AddEntry(0, f"mean = {mu:.3f} {yunit}", "")
+#    leg.SetTextSize(0.035)
+#    leg.Draw()
+#    c.leg=leg
+#    c.SaveAs(f"{direc}/slice{yvar}_vs_{xvar}_bin{xbin}_station_{st}.png")
+#    c.Close()
+#    return c, h_slice, g
+
+
+def plot_slice_and_gaussian(h2,xbin,st,xvar,xunit,yvar,yunit,tag="",min_entries=30,nsig=3.0):
     direc=make_plot_dir(f"gaussianfit_slices_{yvar}_vs_{xvar}")
-    name = h2.GetName()
-    h_int=ROOT.gDirectory.Get(f"{name}_0")
-    h_mean=ROOT.gDirectory.Get(f"{name}_1")
-    h_sigma=ROOT.gDirectory.Get(f"{name}_2")
-    A=h_int.GetBinContent(xbin)
-    mu=h_mean.GetBinContent(xbin)
-    si=h_sigma.GetBinContent(xbin)
-    slice_name= f"{name}_slice_xbin{xbin}"
-    h_slice =h2.ProjectionY(slice_name, xbin, xbin)
-    g_name =f"{name}_gaus_xbin{xbin}"
-    g = ROOT.TF1(g_name, "gaus", y_min, y_max)
-    g.SetParameters(A, mu, si)
-    c = ROOT.TCanvas(f"c_{name}_xbin{xbin}", "", 800, 600)
-    xaxis= h2.GetXaxis()
-    x_low= xaxis.GetBinLowEdge(xbin)
-    x_high= xaxis.GetBinUpEdge(xbin)
+    name=h2.GetName()
+    xaxis=h2.GetXaxis()
+    x_low=xaxis.GetBinLowEdge(xbin)
+    x_high=xaxis.GetBinUpEdge(xbin)
+    slice_name=f"{name}_slice_{tag}_xbin{xbin}"
+    h_slice=h2.ProjectionY(slice_name,xbin,xbin)
+    h_slice.SetDirectory(0)
+    c=ROOT.TCanvas(f"c_{name}_{tag}_xbin{xbin}","",800,600)
     h_slice.SetTitle(f"Station {st}: {x_low:.1f}<{xvar}<{x_high:.1f} [{xunit}];{yvar} [{yunit}];Entries")
     h_slice.SetLineColor(ROOT.kBlack)
     h_slice.SetMarkerStyle(20)
     h_slice.SetMarkerSize(1.0)
     h_slice.SetStats(0)
     h_slice.Draw()
+    if h_slice.GetEntries()<min_entries:
+        c.SaveAs(f"{direc}/slice{yvar}_vs_{xvar}_{tag}_bin{xbin}_station_{st}.png")
+        c.Close()
+        return c,h_slice,None,(None,None,None,None,1)
+    mu0=h_slice.GetMean()
+    rms0=h_slice.GetRMS()
+    if rms0<=0:
+        c.SaveAs(f"{direc}/slice{yvar}_vs_{xvar}_{tag}_bin{xbin}_station_{st}.png")
+        c.Close()
+        return c,h_slice,None,(None,None,None,None,2)
+    y_min=mu0-nsig*rms0
+    y_max=mu0+nsig*rms0
+    g=ROOT.TF1(f"{name}_gaus_{tag}_xbin{xbin}","gaus",y_min,y_max)
+    A0=h_slice.GetMaximum()
+    g.SetParameters(A0,mu0,max(rms0,1e-6))
+    res=h_slice.Fit(g,"RQS")
     g.SetLineColor(ROOT.kRed)
     g.SetLineWidth(2)
     g.Draw("SAME")
-    leg = ROOT.TLegend(0.65, 0.75, 0.89, 0.88)
+    mu=g.GetParameter(1)
+    si=g.GetParameter(2)
+    mu_e=g.GetParError(1)
+    si_e=g.GetParError(2)
+    leg=ROOT.TLegend(0.62,0.75,0.89,0.88)
     leg.SetBorderSize(0)
     leg.SetFillStyle(0)
-    leg.AddEntry(0, f"#sigma = {si:.3f} {yunit}", "")
-    leg.AddEntry(0, f"mean = {mu:.3f} {yunit}", "")
+    leg.AddEntry(0,f"#sigma = {si:.3f} #pm {si_e:.2g} {yunit}","")
+    leg.AddEntry(0,f"mean = {mu:.3f} #pm {mu_e:.2g} {yunit}","")
     leg.SetTextSize(0.035)
     leg.Draw()
     c.leg=leg
-    c.SaveAs(f"{direc}/slice{yvar}_vs_{xvar}_bin{xbin}_station_{st}.png")
+    c.SaveAs(f"{direc}/slice{yvar}_vs_{xvar}_{tag}_bin{xbin}_station_{st}.png")
     c.Close()
-    return c, h_slice, g
+    status=res.Status() if res else 999
+    return c,h_slice,g,(mu,mu_e,si,si_e,status)
 
 def plot_rho(data,station):
     direc=make_plot_dir("rho")
@@ -102,7 +155,7 @@ def plot_delta_z_vs_pT(data,station):
     c.SaveAs(f"{direc}/delta_z_vs_pT_{station}.png")
     return c,h
 
-def plot_sigma_vs_var(data,station,var1,var2,key):
+def plot_sigma_vs_var(data,station,var1,var2,key,yrange=None):
     direc=make_plot_dir(f"sigma{var1}_vs_{var2}")
     if key not in store_plots["histos"]:
         raise RuntimeError(f"missing histogram {key}. run function that makes histo first.")
@@ -125,35 +178,59 @@ def plot_sigma_vs_var(data,station,var1,var2,key):
     h_sigma.SetMarkerStyle(8)
     h_sigma.SetMarkerSize(1.2)
     h_sigma.SetLineWidth(2)
+    if yrange is not None:
+        h_sigma.GetYaxis().SetRangeUser(yrange[0],yrange[1])
     c.SetLeftMargin(0.15)
     h_sigma.Draw("PE")
     store_plots["canvas"][f"sigma{var1}_vs_{var2}_{station}"]=c
     store_plots["histos"][f"sigma{var1}_vs_{var2}_{station}"]=h_sigma
     c.Update()
     c.SaveAs(f"{direc}/sigma{var1}_vs_{var2}_{station}.png")
-    return
+    f = ROOT.TFile(f"sigma{var1}_vs_{var2}_{station}.root", "UPDATE")
+    f.cd()
+    h_sigma.Write(h_sigma.GetName(), ROOT.TObject.kOverwrite)
+    c.Write(c.GetName(), ROOT.TObject.kOverwrite)
+    f.Close()
+    return c,h_sigma
 
-def plot_yslices(data,station,key,xvar,xunit,yvar,yunit):
+def plot_yslices(data,station,key,xvar,xunit,yvar,yunit,rebinx=2,min_entries=30,nsig=3.0):
     ROOT.gROOT.SetBatch(True)
     if key not in store_plots["histos"]:
         raise RuntimeError(f"missing histogram {key}. run function that makes histo first.")
-    h=store_plots["histos"][key]
-    ymean=h.GetMean(2)
-    yrms=h.GetRMS(2)
-    h.RebinX(2)
-    ROOT.gROOT.cd()
-    fit_gaus=ROOT.TF1(f"fit_gauss_slices_{station}","gaus",ymean-3*yrms,ymean+3*yrms)
-    h.FitSlicesY(fit_gaus,1,-1,0,"QNR")
-    name=h.GetName()
-    h_int=ROOT.gDirectory.Get(f"{name}_0")
-    h_mean=ROOT.gDirectory.Get(f"{name}_1")
-    h_sigma=ROOT.gDirectory.Get(f"{name}_2")
-    if not h_int or not hasattr(h_int,"GetBinContent") or not h_mean or not hasattr(h_mean,"GetBinContent") or not h_sigma or not hasattr(h_sigma,"GetBinContent"):
-        raise RuntimeError(f"FitSlicesY outputs missing for {name}: {type(h_int)}, {type(h_mean)}, {type(h_sigma)}")
+    h0=store_plots["histos"][key]
+    h=h0.Clone(f"{h0.GetName()}_tmp_yslices_st{station}")
+    h.SetDirectory(0)
+    if rebinx and rebinx>1:
+        h.RebinX(rebinx)
+    tag=f"{key}_st{station}_rb{rebinx}"
+    direc=make_plot_dir(f"yslices_{yvar}_vs_{xvar}")
+    hx=ROOT.TH1F(f"h_sigma_{tag}",f"Station {station};{xvar} [{xunit}];#sigma({yvar}) [{yunit}]",h.GetNbinsX(),h.GetXaxis().GetXmin(),h.GetXaxis().GetXmax())
+    hx.SetDirectory(0)
+    hx.GetXaxis().SetTitle(h.GetXaxis().GetTitle() if h.GetXaxis().GetTitle() else f"{xvar} [{xunit}]")
     for i in range(1,h.GetNbinsX()+1):
-        plot_slice_and_gaussian(h,i,station,xvar,xunit,yvar,yunit,y_min=ymean-3*yrms,y_max=ymean+3*yrms)
+        c,h_slice,g,pars=plot_slice_and_gaussian(h,i,station,xvar,xunit,yvar,yunit,tag=tag,min_entries=min_entries,nsig=nsig)
+        mu,mu_e,si,si_e,status=pars
+        if si is None:
+            continue
+        if status!=0:
+            continue
+        if si<=0:
+            continue
+        hx.SetBinContent(i,si)
+        hx.SetBinError(i,si_e if si_e is not None else 0.0)
+    c_sig=ROOT.TCanvas(f"c_sigma_{tag}","",900,700)
+    c_sig.SetLeftMargin(0.15)
+    hx.SetStats(0)
+    hx.SetMarkerStyle(8)
+    hx.SetMarkerSize(1.2)
+    hx.SetLineWidth(2)
+    hx.Draw("PE")
+    c_sig.Update()
+    c_sig.SaveAs(f"{direc}/sigma_{yvar}_vs_{xvar}_{tag}.png")
+    store_plots["canvas"][f"yslices_sigma_{tag}"]=c_sig
+    store_plots["histos"][f"yslices_sigma_{tag}"]=hx
     print("all y slice plots saved.")
-    return
+    return c_sig,hx
 
 def plot_deltak_and_profile_vs_eta(data,st1,st2):
     direc=make_plot_dir("deltak_vs_eta")
@@ -280,12 +357,12 @@ def plot_st1_to_vtx_vs_k1(data,conv_z=True, conv_k=True):
     store_plots["profiles"][f"dzprof_vs_k1_MB1_vtx"]=p
     return c1,c2,h,p
 
-def plot_deltak_vs_curv(data,st,show=True):
+def plot_deltak_vs_curv(data,st,show=True,xrange=(-7000,7000),yrange=(-20000,20000)):
     if not show:
         ROOT.gROOT.SetBatch(True)
     direc=make_plot_dir("deltak_vs_curv")
     c=ROOT.TCanvas(f"c_dk_curv_{st}","",800,600)
-    h=ROOT.TH2F(f"h_dk_curv_{st}",f"(k_{{pred,{st}}}-k_{{meas,{st}}}) vs curvature;gen q/p_{{T}};#Delta k (k_{{pred,{st}}}-k_{{meas,{st}}})",100,-10000,10000,100,-15000,15000)
+    h=ROOT.TH2F(f"h_dk_curv_{st}",f"(k_{{pred,{st}}}-k_{{meas,{st}}}) vs curvature;gen q/p_{{T}};#Delta k (k_{{pred,{st}}}-k_{{meas,{st}}})",100,xrange[0],xrange[1],100,yrange[0],yrange[1])
     h.SetDirectory(0)
     m={}
     if st==3:
@@ -300,23 +377,26 @@ def plot_deltak_vs_curv(data,st,show=True):
         k_pred=1*k0
         h.Fill(curv, k_pred-k_meas)
     h.SetStats(0)
-    if show:
-        h.Draw("COLZ")
+    h.Draw("COLZ")
     store_plots["canvas"][f"deltak_vs_curv_{st}"]=c
     store_plots["histos"][f"deltak_vs_curv_{st}"]=h
     print(f"histo name stored: deltak_vs_curv_{st}")
     c.Update()
     c.SaveAs(f"{direc}/deltak_vs_curv_{st}.png")
+    f=ROOT.TFile(f"deltak_vs_curv_{st}.root","UPDATE")
+    f.cd()
+    h.Write(h.GetName(),ROOT.TObject.kOverwrite)
+    c.Write(c.GetName(),ROOT.TObject.kOverwrite)
+    f.Close()
+
     return c,h 
 
-
-
-def plot_deltaz_vs_curv(data,st,show=True):
+def plot_deltaz_vs_curv(data,st,show=True,xrange=(-10000,10000),yrange=(-15000,15000)):
     if not show:
         ROOT.gROOT.SetBatch(True)
     direc=make_plot_dir("deltaz_vs_curv")
     c=ROOT.TCanvas(f"c_dz_curv_{st}","",800,600)
-    h=ROOT.TH2F(f"h_dz_curv_{st}",f"(z_{{pred,{st}}}-z_{{meas,{st}}}) vs curvature;gen q/p_{{T}};#Delta z (z_{{pred,{st}}}-z_{{meas,{st}}})",100,-10000,10000,100,-15000,15000)
+    h=ROOT.TH2F(f"h_dz_curv_{st}",f"(z_{{pred,{st}}}-z_{{meas,{st}}}) vs curvature;gen q/p_{{T}};#Delta z (z_{{pred,{st}}}-z_{{meas,{st}}})",100,xrange[0],xrange[1],100,yrange[0],yrange[1])
     h.SetDirectory(0)
     m={}
     if st==1:
@@ -325,19 +405,23 @@ def plot_deltaz_vs_curv(data,st,show=True):
         dR=-.133
     else:
         print("cannot propagate to station 3 (no stubs at st 4).")
-    for muid,z0,curv,slope in zip(data["mu_id"][st+1],data["stub_z"][st+1],data["gen_curv"][st+1], data["stub_k"][st+1]):
+    for muid,z0,curv,slope in zip(data["mu_id"][st+1],data["stub_z"][st+1],data["gen_curv"][st+1],data["stub_k"][st+1]):
         if muid not in m:
-            m[muid]=(z0,curv, slope)
+            m[muid]=(z0,curv,slope)
     for muid,z_meas in zip(data["mu_id"][st],data["stub_z"][st]):
         if muid not in m:
             continue
         z0,curv,slope=m[muid]
         z_pred=z0+slope*dR
-        h.Fill(curv, z_pred-z_meas)
+        h.Fill(curv,z_pred-z_meas)
     h.SetStats(0)
     c.SetLeftMargin(0.15)
-    if show:
-        h.Draw("COLZ")
+    py=h.ProjectionY(f"py_dz_{st}")
+    mu=py.GetMean()
+    rms=py.GetRMS()
+    if rms>0:
+        h.GetYaxis().SetRangeUser(mu-6*rms,mu+6*rms)
+    h.Draw("COLZ")
     store_plots["canvas"][f"deltaz_vs_curv_{st}"]=c
     store_plots["histos"][f"deltaz_vs_curv_{st}"]=h
     c.Update()
@@ -347,16 +431,19 @@ def plot_deltaz_vs_curv(data,st,show=True):
     p.SetLineWidth(2)
     p.SetTitle(f"station: {st} <z_pred-z_meas> vs curvature;gen q/pT;<#Delta z>")
     c2=ROOT.TCanvas(f"c_dzprof_curv_{st}","",900,700)
-    c2.SetLeftMargin(0.15)  
-    if show:
-        p.Draw("E")
+    c2.SetLeftMargin(0.15)
+    p.Draw("E")
     c2.Update()
     c2.SaveAs(f"{direc}/dz_profile_vs_curv_MB{st}.png")
     store_plots["canvas"][f"dzprof_vs_curv_MB{st}"]=c2
     store_plots["profiles"][f"dzprof_vs_curv_MB{st}"]=p
     print(f"histo name stored: deltaz_vs_curv_{st}")
+    f=ROOT.TFile(f"deltaz_vs_curv_{st}.root","UPDATE")
+    f.cd()
+    h.Write(h.GetName(),ROOT.TObject.kOverwrite)
+    c.Write(c.GetName(),ROOT.TObject.kOverwrite)
+    f.Close()
     return c,c2,h,p
-
     
 if __name__=="__main__":
     data=event_loop(1000, False, False)

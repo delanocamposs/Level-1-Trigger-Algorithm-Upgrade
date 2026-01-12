@@ -155,3 +155,54 @@ def make_plot_dir(name):
     outdir = os.path.join("plot_images", name)
     os.makedirs(outdir, exist_ok=True)
     return outdir
+
+def fit(infile,hname,outfile,fitlo,fithi,exlo,exhi,title,xaxis,yaxis):
+    f=ROOT.TFile.Open(infile)
+    h=f.Get(hname)
+    if not h:
+        raise RuntimeError("missing histogram")
+    h=h.Clone("h")
+    h.SetDirectory(0)
+    f.Close()
+    ax=h.GetXaxis()
+    g=ROOT.TGraphErrors()
+    n=0
+    for i in range(1,h.GetNbinsX()+1):
+        x=ax.GetBinCenter(i)
+        if x<fitlo or x>fithi:
+            continue
+        if exlo<=x<=exhi:
+            continue
+        y=h.GetBinContent(i)
+        e=h.GetBinError(i)
+        if e<=0:
+            continue
+        g.SetPoint(n,x,y)
+        g.SetPointError(n,0,e)
+        n+=1
+    g.SetName("included")
+    g.SetMarkerStyle(20)
+    g.SetMarkerSize(1.0)
+    fun=ROOT.TF1("fit","[0]+[1]*x+[2]*x*x",fitlo,fithi)
+    g.Fit(fun,"RQ")
+    c=ROOT.TCanvas("c","",800,600)
+    g.GetXaxis().SetLimits(fitlo,fithi)
+    g.SetName("included")
+    g.SetTitle(f"{title};{xaxis};{yaxis}")
+    g.SetMarkerStyle(20)
+    g.SetMarkerSize(1.0)    
+    g.Draw("AP")
+    fun.Draw("SAME")
+    lat=ROOT.TLatex()
+    lat.SetNDC(True)
+    lat.SetTextSize(0.035)
+    lat.DrawLatex(0.15,0.86,f"ax^{{2}} + bx + c")
+    lat.DrawLatex(0.15,0.81,f"a = {fun.GetParameter(2):.2e}")
+    lat.DrawLatex(0.15,0.76,f"b = {fun.GetParameter(1):.2e}")
+    lat.DrawLatex(0.15,0.71,f"c = {fun.GetParameter(0):.2f}")
+    o=ROOT.TFile.Open(outfile,"RECREATE")
+    g.Write()
+    fun.Write("fit")
+    c.Write()
+    o.Close()
+
