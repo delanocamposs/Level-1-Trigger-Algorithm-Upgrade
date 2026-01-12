@@ -391,7 +391,7 @@ def plot_deltak_vs_curv(data,st,show=True,xrange=(-7000,7000),yrange=(-20000,200
 
     return c,h 
 
-def plot_deltaz_vs_curv(data,st,show=True,xrange=(-10000,10000),yrange=(-15000,15000)):
+def plot_deltaz_vs_curv(data,st,conv_k,show=True,xrange=(-10000,10000),yrange=(-15000,15000)):
     if not show:
         ROOT.gROOT.SetBatch(True)
     direc=make_plot_dir("deltaz_vs_curv")
@@ -400,9 +400,15 @@ def plot_deltaz_vs_curv(data,st,show=True,xrange=(-10000,10000),yrange=(-15000,1
     h.SetDirectory(0)
     m={}
     if st==1:
-        dR=-.101
-    elif st==2:
-        dR=-.133
+        if not conv_k:
+            dR=-.101
+        else:
+            dR=-76.7
+    elif st==2: 
+        if not conv_k:
+            dR=-.133
+        else:
+            dR=-101
     else:
         print("cannot propagate to station 3 (no stubs at st 4).")
     for muid,z0,curv,slope in zip(data["mu_id"][st+1],data["stub_z"][st+1],data["gen_curv"][st+1],data["stub_k"][st+1]):
