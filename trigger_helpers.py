@@ -205,5 +205,3 @@ def fit(infile,hname,outfile,fitlo,fithi,exlo,exhi,title,xaxis,yaxis):
     fun.Write("fit")
     c.Write()
     o.Close()
-
-def get_dR(st1,st2,)
