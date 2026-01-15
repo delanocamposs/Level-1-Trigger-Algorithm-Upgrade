@@ -335,7 +335,7 @@ def plot_deltaz_vs_k(data,st,conv_z=False, conv_k=False):
     store_plots["profiles"][f"dzprof_vs_k{st+1}_MB{st+1}_to_MB{st}"]=p
     return c1,c2,h,p
 
-def plot_st1_to_vtx_vs_k1(data,conv_z=False, conv_k=False):
+def plot_deltaz_vs_k1_to_vtx(data,conv_z=False, conv_k=False):
     direc=make_plot_dir("dz_vs_k")
     if conv_k and conv_z:
         h=ROOT.TH2F(f"h_dz_invk_st1_vtx",f"z_vtx-z1 vs k1;k1;#Delta z (z_vtx-z1)",100,-1.75,1.75,100,-250,250)
