@@ -17,7 +17,7 @@ ZRES_CONV=65536.0/1500.0
 KRES_CONV=65536.0/2
 CURV_CONV=(1<<15)/1.25
 
-def event_loop(event_num=100, conv_z=True, conv_k=True):
+def event_loop(event_num=100, conv_z=False, conv_k=False):
     gen_eta_glob, gen_z_glob, gen_pt_glob, gen_vz_glob, gen_vr_glob, gen_curv_glob={st: [] for st in stations}, {st: [] for st in stations}, {st: [] for st in stations}, {st:[] for st in stations}, {st:[] for st in stations}, {st:[] for st in stations}
     stub_eta_glob, stub_z_glob, stub_k_glob={st: [] for st in stations}, {st: [] for st in stations}, {st:[] for st in stations}
     delta_z_glob={st:[] for st in stations}
