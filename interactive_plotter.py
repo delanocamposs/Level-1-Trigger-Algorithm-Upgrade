@@ -129,7 +129,7 @@ def plot_delta_z_vs_pT(data,station):
     c.SaveAs(f"{direc}/delta_z_vs_pT_{station}.png")
     return c,h
 
-def plot_yslices(data,station,key,xvar,xunit,yvar,yunit,rebinx=2,min_entries=20,nsig=2.5, sigma_xrange=None, sigma_yrange=None, slice_xrange=None, slice_yrange=None):
+def plot_yslices(data,station,key,xvar,xunit,yvar,yunit,rebinx=2,min_entries=20,nsig=2.5,sigma_xrange=None,sigma_yrange=None,slice_xrange=None,slice_yrange=None):
     ROOT.gROOT.SetBatch(True)
     if key not in store_plots["histos"]:
         raise RuntimeError(f"missing histogram {key}. run function that makes histo first.")
@@ -143,7 +143,7 @@ def plot_yslices(data,station,key,xvar,xunit,yvar,yunit,rebinx=2,min_entries=20,
     hx.SetDirectory(0)
     hx.GetXaxis().SetTitle(h.GetXaxis().GetTitle() if h.GetXaxis().GetTitle() else f"{xvar} [{xunit}]")
     for i in range(1,h.GetNbinsX()+1):
-        c,h_slice,g,pars=plot_slice_and_gaussian(h,i,station,xvar,xunit,yvar,yunit,min_entries=min_entries,nsig=nsig)
+        c,h_slice,g,pars=plot_slice_and_gaussian(h,i,station,xvar,xunit,yvar,yunit,min_entries=min_entries,nsig=nsig,slice_xrange=slice_xrange,slice_yrange=slice_yrange)
         mu,mu_e,si,si_e,status=pars
         if si is None:
             continue
@@ -165,6 +165,42 @@ def plot_yslices(data,station,key,xvar,xunit,yvar,yunit,rebinx=2,min_entries=20,
         hx.GetXaxis().SetRangeUser(sigma_xrange[0],sigma_xrange[1])
     if sigma_yrange is not None:
         hx.GetYaxis().SetRangeUser(sigma_yrange[0],sigma_yrange[1])
+    xlo=hx.GetXaxis().GetXmin()
+    xhi=hx.GetXaxis().GetXmax()
+    if sigma_xrange is not None:
+        xlo=sigma_xrange[0]
+        xhi=sigma_xrange[1]
+    f=ROOT.TF1(f"f_ms_{key}_st{station}","TMath::Sqrt([0]*[0]+([1]*[1])*(x*x))",xlo,xhi)
+    a0=0.0
+    for ib in range(1,hx.GetNbinsX()+1):
+        if hx.GetBinContent(ib)>0:
+            a0=hx.GetBinContent(ib)
+            break
+    b0=0.0
+    for ib in range(hx.GetNbinsX(),0,-1):
+        y=hx.GetBinContent(ib)
+        x=hx.GetXaxis().GetBinCenter(ib)
+        if y>0 and abs(x)>0:
+            b0=y/abs(x)
+            break
+    f.SetParameters(a0,b0)
+    f.SetParNames("a","b")
+    f.SetLineColor(ROOT.kRed)
+    f.SetLineWidth(2)
+    fitres=hx.Fit(f,"RQS")
+    f.Draw("SAME")
+    a=f.GetParameter(0)
+    b=f.GetParameter(1)
+    ae=f.GetParError(0)
+    be=f.GetParError(1)
+    txt=ROOT.TLatex()
+    txt.SetNDC(True)
+    txt.SetTextSize(0.035)
+    txt.DrawLatex(0.18,0.72,"#sigma(k)=#sqrt{a^{2}+b^{2}k^{2}}")
+    txt.DrawLatex(0.18,0.82,f"a={a:.3g} #pm {ae:.2g}")
+    txt.DrawLatex(0.18,0.77,f"b={b:.3g} #pm {be:.2g}")
+    store_plots["fits"][f"yslices_sigma_fit_{key}_st{station}"]=f
+    store_plots["fits"][f"yslices_sigma_fitres_{key}_st{station}"]=fitres
     c_sig.Update()
     c_sig.SaveAs(f"{direc}/sigma_{yvar}_vs_{xvar}.png")
     store_plots["canvas"]["yslices_sigma"]=c_sig
