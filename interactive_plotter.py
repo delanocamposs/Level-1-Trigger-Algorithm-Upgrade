@@ -426,6 +426,60 @@ def plot_deltaz_vs_curv(data,st,conv_k,show=True,xrange=(-7000,7000),yrange=(-10
     c.Write(c.GetName(),ROOT.TObject.kOverwrite)
     f.Close()
     return c,c2,h,p
+
+def plot_deltaz_vs_curv_to_vtx(data,show=True,xrange=(-7000,7000),yrange=(-10000,10000)):
+    #currently i dont have the option to convert k and z to real coords. 
+    #will have to obtain dR for the converted case (dR=-0.579 is for non-converted)
+    st="vtx"
+    if not show:
+        ROOT.gROOT.SetBatch(True)
+    direc=make_plot_dir("deltaz_vs_curv")
+    c=ROOT.TCanvas(f"c_dz_curv_{st}","",800,600)
+    h=ROOT.TH2F(f"h_dz_curv_{st}",f"(z_{{pred,{st}}}-z_{{meas,{st}}}) vs curvature;gen q/p_{{T}};#Delta z (z_{{pred,{st}}}-z_{{meas,{st}}})",100,xrange[0],xrange[1],100,yrange[0],yrange[1])
+    h.SetDirectory(0)
+    m={}
+    dR=-.579
+    for muid,z1,curv1,slope1 in zip(data["mu_id"][1],data["stub_z"][1],data["gen_curv"][1],data["stub_k"][1]):
+        if muid not in m:
+            m[muid]=(z1,curv1,slope1)
+    for muid,z_vtx in zip(data["mu_id"][1],data["gen_vz"][1]):
+        if muid not in m:
+            continue
+        z1,curv1,slope1=m[muid]
+        z_pred=z1+slope1*dR
+        z_vtx=z_vtx*(65536.0/1500.0)
+        h.Fill(curv1,z_pred-z_vtx)
+    h.SetStats(0)
+    c.SetLeftMargin(0.15)
+    py=h.ProjectionY(f"py_dz_{st}")
+    mu=py.GetMean()
+    rms=py.GetRMS()
+    if rms>0:
+        h.GetYaxis().SetRangeUser(mu-6*rms,mu+6*rms)
+    h.Draw("COLZ")
+    store_plots["canvas"][f"deltaz_vs_curv_{st}"]=c
+    store_plots["histos"][f"deltaz_vs_curv_{st}"]=h
+    c.Update()
+    c.SaveAs(f"{direc}/deltaz_vs_curv_{st}.png")
+    p=h.ProfileX()
+    p.SetStats(0)
+    p.SetLineWidth(2)
+    p.SetTitle(f"station: {st} <z_pred-z_meas> vs curvature;gen q/pT;<#Delta z>")
+    c2=ROOT.TCanvas(f"c_dzprof_curv_{st}","",900,700)
+    c2.SetLeftMargin(0.15)
+    p.Draw("E")
+    c2.Update()
+    c2.SaveAs(f"{direc}/dz_profile_vs_curv_MB{st}.png")
+    store_plots["canvas"][f"dzprof_vs_curv_MB{st}"]=c2
+    store_plots["profiles"][f"dzprof_vs_curv_MB{st}"]=p
+    print(f"histo name stored: deltaz_vs_curv_{st}")
+    f=ROOT.TFile(f"deltaz_vs_curv_{st}.root","UPDATE")
+    f.cd()
+    h.Write(h.GetName(),ROOT.TObject.kOverwrite)
+    c.Write(c.GetName(),ROOT.TObject.kOverwrite)
+    f.Close()
+    return c,c2,h,p
+#def plot_deltak_vs_curv_to_vtx():
     
 if __name__=="__main__":
     data=event_loop(1000, False, False)
