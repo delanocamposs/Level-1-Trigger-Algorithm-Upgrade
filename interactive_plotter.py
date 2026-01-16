@@ -440,8 +440,8 @@ def plot_deltaz_vs_curv(data,st,conv_k=False, conv_z=False,show=False,xrange=(-7
     h=ROOT.TH2F(f"h_dz_curv_{st}",f"(z_{{pred,{st}}}-z_{{meas,{st}}}) vs curvature;gen q/p_{{T}};#Delta z (z_{{pred,{st}}}-z_{{meas,{st}}})",100,xrange[0],xrange[1],100,yrange[0],yrange[1])
     h.SetDirectory(0)
     m={}
-    if conv_k!=conv_z:
-        continue
+    if conv_k != conv_z:
+        raise ValueError("conv_z and conv_k must be the same for consistent units. ")
     if st==1:
         if conv_z==False:
             dR=-.109
