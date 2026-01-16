@@ -276,14 +276,13 @@ def plot_dz_vs_1_over_k(data,st1,st2):
     store_plots["profiles"][f"dzprof_vs_1_over_k{st2}_{st1}_{st2}"]=p
     return c1,c2,h,p
 
-def plot_deltaz_vs_k(data,st,conv_z=False, conv_k=False):
+def plot_deltaz_vs_k(data,st,conv_z=False, conv_k=False, xrange=(-50000,50000), yrange=(-6000,6000),show=False):
     #st refers to the station we are propagating to, not from.
     #for ex: want to plot deltaz vs k for 2->1, we use st=1
+    if not show:
+        ROOT.gROOT.SetBatch(True)
     direc=make_plot_dir("dz_vs_k")
-    if conv_k and conv_z:
-        h=ROOT.TH2F(f"h_dz_vs_k_MB{st+1}_to_MB{st}",f"z{st}-z{st+1} vs k{st+1};k{st+1};#Delta z (z{st}-z{st+1})",100,-1.75,1.75,100,-250,250)
-    else:
-        h=ROOT.TH2F(f"h_dz_vs_k_MB{st+1}_to_MB{st}",f"z{st}-z{st+1} vs k{st+1};k{st+1};#Delta z (z{st}-z{st+1})",100,-50000,50000,100,-40000,40000)
+    h=ROOT.TH2F(f"h_dz_vs_k_MB{st+1}_to_MB{st}",f"z{st}-z{st+1} vs k{st+1};k{st+1};#Delta z (z{st}-z{st+1})",100,xrange[0],xrange[1],100,yrange[0],yrange[1])
     h.SetDirectory(0)
     m1={}
     for muid,k2,z2 in zip(data["mu_id"][st+1],data["stub_k"][st+1],data["stub_z"][st+1]):
@@ -294,16 +293,18 @@ def plot_deltaz_vs_k(data,st,conv_z=False, conv_k=False):
             continue
         k2,z2=m1[muid]
         h.Fill(k2,z1-z2)
-    c1=ROOT.TCanvas(f"{direc}/c_dz_vs_k{st+1}_MB1_{st}","",900,700)
+    c1=ROOT.TCanvas(f"{direc}/c_dz_vs_k{st+1}_MB{st+1}_to_MB{st}","",900,700)
+    c1.SetLeftMargin(0.15)
     h.SetStats(0)
     h.Draw("COLZ")
     c1.Update()
-    c1.SaveAs(f"{direc}/dz_vs_k{st+1}_MB1_{st}.png")
+    c1.SaveAs(f"{direc}/dz_vs_k{st+1}_MB{st+1}_to_MB{st}.png")
     p=h.ProfileX()
     p.SetStats(0)
     p.SetLineWidth(2)
     p.SetTitle(f"<z{st}-z{st+1}> vs k{st+1};k{st+1};<#Delta z>")
     c2=ROOT.TCanvas(f"c_dzprofile_k{st+1}_MB{st+1}_to_MB{st}","",900,700)
+    c2.SetLeftMargin(0.15)
     p.Draw("E")
     x_min=p.GetXaxis().GetXmin()
     x_max=p.GetXaxis().GetXmax()
@@ -328,29 +329,34 @@ def plot_deltaz_vs_k(data,st,conv_z=False, conv_k=False):
         txt.DrawLatex(0.15,0.75,f"int={p0:.3g} #pm {p0e:.2g}")
 
     c2.Update()
-    c2.SaveAs(f"dz_profile_vs_k{st+1}_MB{st+1}_to_MB{st}.png")
+    c2.SaveAs(f"{direc}/dz_profile_vs_k{st+1}_MB{st+1}_to_MB{st}.png")
     store_plots["canvas"][f"dz_vs_k{st+1}"]=c1
     store_plots["canvas"][f"dzprofile_vs_k{st+1}_MB{st+1}_to_MB{st}"]=c2
     store_plots["histos"][f"dz_vs_k{st+1}_MB{st+1}_to_MB{st}"]=h
     store_plots["profiles"][f"dzprof_vs_k{st+1}_MB{st+1}_to_MB{st}"]=p
     return c1,c2,h,p
 
-def plot_deltaz_vs_k1_to_vtx(data,conv_z=False, conv_k=False):
+def plot_deltaz_vs_k1_to_vtx(data,conv_z=False, conv_k=False, xrange=(-50000,50000), yrange=(-30000, 30000), show=False):
+    if not show:
+        ROOT.gROOT.SetBatch(True)
     direc=make_plot_dir("dz_vs_k")
-    if conv_k and conv_z:
-        h=ROOT.TH2F(f"h_dz_invk_st1_vtx",f"z_vtx-z1 vs k1;k1;#Delta z (z_vtx-z1)",100,-1.75,1.75,100,-250,250)
-    else:
-        h=ROOT.TH2F(f"h_dz_invk_st1_vtx",f"z_vtx-z1 vs k1;k1;#Delta z (z_vtx-z1)",100,-50000,50000,100,-40000,40000)
+    h=ROOT.TH2F(f"h_dz_invk_st1_vtx",f"z_vtx-z1 vs k1;k1;#Delta z (z_vtx-z1)",100,xrange[0],xrange[1],100,yrange[0],yrange[1])
     h.SetDirectory(0)
     m1={}
-    for muid,k2,z2 in zip(data["mu_id"][1],data["stub_k"][1],data["stub_z"][1]):
+    for muid,k1,z1 in zip(data["mu_id"][1],data["stub_k"][1],data["stub_z"][1]):
         if muid not in m1:
-            m1[muid]=(k2,z2)
-    for muid,z1 in zip(data["mu_id"][1],data["gen_vz"][1]):
+            m1[muid]=(k1,z1)
+    for muid,z_vtx in zip(data["mu_id"][1],data["gen_vz"][1]):
         if muid not in m1:
             continue
-        k2,z2=m1[muid]
-        h.Fill(k2,z1-z2)
+        k1,z1=m1[muid]
+        if conv_z!=conv_k:
+            continue
+        if conv_z==False:
+            z_vtx=z_vtx*(65536.0/1500.0)
+        else:
+            z_vtx=z_vtx
+        h.Fill(k1,z_vtx-z1)
     c1=ROOT.TCanvas(f"{direc}/c_dz_vs_k1_MB1_vtx","",900,700)
     h.SetStats(0)
     h.Draw("COLZ")
@@ -385,7 +391,7 @@ def plot_deltaz_vs_k1_to_vtx(data,conv_z=False, conv_k=False):
         txt.DrawLatex(0.15,0.75,f"int={p0:.3g} #pm {p0e:.2g}")
 
     c2.Update()
-    c2.SaveAs(f"dz_profile_vs_k1_MB1_vtx.png")
+    c2.SaveAs(f"{direc}/dz_profile_vs_k1_MB1_vtx.png")
     store_plots["canvas"][f"dz_vs_k1_MB1_vtx"]=c1
     store_plots["canvas"][f"dzprof_vs_k1_MB1_vtx"]=c2
     store_plots["histos"][f"dz_vs_k1_MB1_vtx"]=h
@@ -426,7 +432,7 @@ def plot_deltak_vs_curv(data,st,show=True,xrange=(-7000,7000),yrange=(-20000,200
 
     return c,h 
 
-def plot_deltaz_vs_curv(data,st,conv_k,show=False,xrange=(-7000,7000),yrange=(-10000,10000)):
+def plot_deltaz_vs_curv(data,st,conv_k=False, conv_z=False,show=False,xrange=(-7000,7000),yrange=(-10000,10000)):
     if not show:
         ROOT.gROOT.SetBatch(True)
     direc=make_plot_dir("deltaz_vs_curv")
@@ -434,16 +440,18 @@ def plot_deltaz_vs_curv(data,st,conv_k,show=False,xrange=(-7000,7000),yrange=(-1
     h=ROOT.TH2F(f"h_dz_curv_{st}",f"(z_{{pred,{st}}}-z_{{meas,{st}}}) vs curvature;gen q/p_{{T}};#Delta z (z_{{pred,{st}}}-z_{{meas,{st}}})",100,xrange[0],xrange[1],100,yrange[0],yrange[1])
     h.SetDirectory(0)
     m={}
+    if conv_k!=conv_z:
+        continue
     if st==1:
-        if not conv_k:
-            dR=-.101
+        if conv_z==False:
+            dR=-.109
         else:
-            dR=-76.7
+            dR=-80.3
     elif st==2: 
-        if not conv_k:
-            dR=-.133
+        if conv_z==False:
+            dR=-.142
         else:
-            dR=-101
+            dR=-106
     else:
         print("cannot propagate to station 3 (no stubs at st 4).")
     for muid,z0,curv,slope in zip(data["mu_id"][st+1],data["stub_z"][st+1],data["gen_curv"][st+1],data["stub_k"][st+1]):
@@ -486,7 +494,7 @@ def plot_deltaz_vs_curv(data,st,conv_k,show=False,xrange=(-7000,7000),yrange=(-1
     f.Close()
     return c,c2,h,p
 
-def plot_deltaz_vs_curv_to_vtx(data,show=True,xrange=(-7000,7000),yrange=(-10000,10000)):
+def plot_deltaz_vs_curv_to_vtx(data,show=True,xrange=(-7000,7000),yrange=(-10000,10000), conv_k=False, conv_z=True):
     #currently i dont have the option to convert k and z to real coords. 
     #will have to obtain dR for the converted case (dR=-0.579 is for non-converted)
     st="vtx"
@@ -497,7 +505,12 @@ def plot_deltaz_vs_curv_to_vtx(data,show=True,xrange=(-7000,7000),yrange=(-10000
     h=ROOT.TH2F(f"h_dz_curv_{st}",f"(z_{{pred,{st}}}-z_{{meas,{st}}}) vs curvature;gen q/p_{{T}};#Delta z (z_{{pred,{st}}}-z_{{meas,{st}}})",100,xrange[0],xrange[1],100,yrange[0],yrange[1])
     h.SetDirectory(0)
     m={}
-    dR=-.579
+    if conv_k!=conv_z:
+        continue
+    if conv_z==False:
+        dR=-.601
+    else:
+        dR=-438
     for muid,z1,curv1,slope1 in zip(data["mu_id"][1],data["stub_z"][1],data["gen_curv"][1],data["stub_k"][1]):
         if muid not in m:
             m[muid]=(z1,curv1,slope1)
@@ -506,7 +519,11 @@ def plot_deltaz_vs_curv_to_vtx(data,show=True,xrange=(-7000,7000),yrange=(-10000
             continue
         z1,curv1,slope1=m[muid]
         z_pred=z1+slope1*dR
-        z_vtx=z_vtx*(65536.0/1500.0)
+        if conv_z==False:
+            #if using digital, raw units, i must change the z_vtx to raw units. from the data dictionary it is returned in physical units as cm from genparticles collection
+            z_vtx=z_vtx*(65536.0/1500.0)
+        else:
+            z_vtx=z_vtx
         h.Fill(curv1,z_pred-z_vtx)
     h.SetStats(0)
     c.SetLeftMargin(0.15)
@@ -538,7 +555,6 @@ def plot_deltaz_vs_curv_to_vtx(data,show=True,xrange=(-7000,7000),yrange=(-10000
     c.Write(c.GetName(),ROOT.TObject.kOverwrite)
     f.Close()
     return c,c2,h,p
-#def plot_deltak_vs_curv_to_vtx():
     
 if __name__=="__main__":
     data=event_loop(1000, False, False)
