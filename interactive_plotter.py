@@ -506,7 +506,7 @@ def plot_deltaz_vs_curv_to_vtx(data,show=True,xrange=(-7000,7000),yrange=(-10000
     h.SetDirectory(0)
     m={}
     if conv_k!=conv_z:
-        continue
+        raise ValueError("conv_k and conv_z must be the same. units need to be consistent")
     if conv_z==False:
         dR=-.601
     else:
