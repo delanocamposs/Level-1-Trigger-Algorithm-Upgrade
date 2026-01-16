@@ -6,7 +6,7 @@ import os
 
 store_plots={"canvas":{}, "histos":{}, "fits":{}, "profiles":{}}
 
-def plot_slice_and_gaussian(h2,xbin,st,xvar,xunit,yvar,yunit,min_entries=20,nsig=2.5,slice_xrange=None,slice_yrange=None):
+def plot_slice_and_gaussian(h2,xbin,st,xvar,xunit,yvar,yunit,min_entries=10,nsig=2,slice_xrange=None,slice_yrange=None):
     direc=make_plot_dir(f"gaussianfit_slices_{yvar}_vs_{xvar}")
     name=h2.GetName()
     xaxis=h2.GetXaxis()
@@ -129,7 +129,7 @@ def plot_delta_z_vs_pT(data,station):
     c.SaveAs(f"{direc}/delta_z_vs_pT_{station}.png")
     return c,h
 
-def plot_yslices(data,station,key,xvar,xunit,yvar,yunit,rebinx=2,min_entries=20,nsig=2.5,sigma_xrange=None,sigma_yrange=None,slice_xrange=None,slice_yrange=None):
+def plot_yslices(data,station,key,xvar,xunit,yvar,yunit,rebinx=20,min_entries=10,nsig=2,sigma_xrange=None,sigma_yrange=None,slice_xrange=None,slice_yrange=None):
     ROOT.gROOT.SetBatch(True)
     if key not in store_plots["histos"]:
         raise RuntimeError(f"missing histogram {key}. run function that makes histo first.")
@@ -494,7 +494,7 @@ def plot_deltaz_vs_curv(data,st,conv_k=False, conv_z=False,show=False,xrange=(-7
     f.Close()
     return c,c2,h,p
 
-def plot_deltaz_vs_curv_to_vtx(data,show=True,xrange=(-7000,7000),yrange=(-10000,10000), conv_k=False, conv_z=True):
+def plot_deltaz_vs_curv_to_vtx(data,show=False,xrange=(-7000,7000),yrange=(-10000,10000), conv_k=False, conv_z=False):
     #currently i dont have the option to convert k and z to real coords. 
     #will have to obtain dR for the converted case (dR=-0.579 is for non-converted)
     st="vtx"
@@ -555,6 +555,7 @@ def plot_deltaz_vs_curv_to_vtx(data,show=True,xrange=(-7000,7000),yrange=(-10000
     c.Write(c.GetName(),ROOT.TObject.kOverwrite)
     f.Close()
     return c,c2,h,p
-    
+
+
 if __name__=="__main__":
-    data=event_loop(1000, False, False)
+    data=event_loop(1000,False,False)
