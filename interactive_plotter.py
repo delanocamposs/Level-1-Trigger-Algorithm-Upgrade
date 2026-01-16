@@ -208,9 +208,9 @@ def plot_yslices(data,station,key,xvar,xunit,yvar,yunit,rebinx=20,min_entries=10
     print("all y slice plots saved.")
     return c_sig,hx
 
-def plot_deltak_and_profile_vs_eta(data,st1,st2):
+def plot_deltak_and_profile_vs_eta(data,st1,st2,xbins=60,ybins=80):
     direc=make_plot_dir("deltak_vs_eta")
-    h=ROOT.TH2F(f"h_dk_eta_{st1}_{st2}",f"k_{st2}-k_{st1} vs stub #eta_{st1};stub #eta;#Delta k",60,-1.3,1.3,80,-1.0,1.0)
+    h=ROOT.TH2F(f"h_dk_eta_{st1}_{st2}",f"k_{st2}-k_{st1} vs stub #eta_{st1};stub #eta;#Delta k",xbins,-1.3,1.3,ybins,-1.0,1.0)
     h.SetDirectory(0)
     m1={}
     for muid,k,eta in zip(data["mu_id"][st1],data["stub_k"][st1],data["stub_eta"][st1]):
@@ -276,13 +276,13 @@ def plot_dz_vs_1_over_k(data,st1,st2):
     store_plots["profiles"][f"dzprof_vs_1_over_k{st2}_{st1}_{st2}"]=p
     return c1,c2,h,p
 
-def plot_deltaz_vs_k(data,st,conv_z=False, conv_k=False, xrange=(-50000,50000), yrange=(-6000,6000),show=False):
+def plot_deltaz_vs_k(data,st,conv_z=False, conv_k=False, xrange=(-50000,50000), yrange=(-6000,6000),show=False,xbins=100,ybins=100):
     #st refers to the station we are propagating to, not from.
     #for ex: want to plot deltaz vs k for 2->1, we use st=1
     if not show:
         ROOT.gROOT.SetBatch(True)
     direc=make_plot_dir("dz_vs_k")
-    h=ROOT.TH2F(f"h_dz_vs_k_MB{st+1}_to_MB{st}",f"z{st}-z{st+1} vs k{st+1};k{st+1};#Delta z (z{st}-z{st+1})",100,xrange[0],xrange[1],100,yrange[0],yrange[1])
+    h=ROOT.TH2F(f"h_dz_vs_k_MB{st+1}_to_MB{st}",f"z{st}-z{st+1} vs k{st+1};k{st+1};#Delta z (z{st}-z{st+1})",xbins,xrange[0],xrange[1],ybins,yrange[0],yrange[1])
     h.SetDirectory(0)
     m1={}
     for muid,k2,z2 in zip(data["mu_id"][st+1],data["stub_k"][st+1],data["stub_z"][st+1]):
@@ -336,11 +336,11 @@ def plot_deltaz_vs_k(data,st,conv_z=False, conv_k=False, xrange=(-50000,50000), 
     store_plots["profiles"][f"dzprof_vs_k{st+1}_MB{st+1}_to_MB{st}"]=p
     return c1,c2,h,p
 
-def plot_deltaz_vs_k1_to_vtx(data,conv_z=False, conv_k=False, xrange=(-50000,50000), yrange=(-30000, 30000), show=False):
+def plot_deltaz_vs_k1_to_vtx(data,conv_z=False, conv_k=False, xrange=(-50000,50000), yrange=(-30000, 30000), show=False,xbins=100,ybins=100):
     if not show:
         ROOT.gROOT.SetBatch(True)
     direc=make_plot_dir("dz_vs_k")
-    h=ROOT.TH2F(f"h_dz_invk_st1_vtx",f"z_vtx-z1 vs k1;k1;#Delta z (z_vtx-z1)",100,xrange[0],xrange[1],100,yrange[0],yrange[1])
+    h=ROOT.TH2F(f"h_dz_invk_st1_vtx",f"z_vtx-z1 vs k1;k1;#Delta z (z_vtx-z1)",xbins,xrange[0],xrange[1],ybins,yrange[0],yrange[1])
     h.SetDirectory(0)
     m1={}
     for muid,k1,z1 in zip(data["mu_id"][1],data["stub_k"][1],data["stub_z"][1]):
@@ -398,12 +398,12 @@ def plot_deltaz_vs_k1_to_vtx(data,conv_z=False, conv_k=False, xrange=(-50000,500
     store_plots["profiles"][f"dzprof_vs_k1_MB1_vtx"]=p
     return c1,c2,h,p
 
-def plot_deltak_vs_curv(data,st,show=True,xrange=(-7000,7000),yrange=(-20000,20000)):
+def plot_deltak_vs_curv(data,st,show=True,xrange=(-7000,7000),yrange=(-20000,20000),xbins=100,ybins=100):
     if not show:
         ROOT.gROOT.SetBatch(True)
     direc=make_plot_dir("deltak_vs_curv")
     c=ROOT.TCanvas(f"c_dk_curv_{st}","",800,600)
-    h=ROOT.TH2F(f"h_dk_curv_{st}",f"(k_{{pred,{st}}}-k_{{meas,{st}}}) vs curvature;gen q/p_{{T}};#Delta k (k_{{pred,{st}}}-k_{{meas,{st}}})",100,xrange[0],xrange[1],100,yrange[0],yrange[1])
+    h=ROOT.TH2F(f"h_dk_curv_{st}",f"(k_{{pred,{st}}}-k_{{meas,{st}}}) vs curvature;gen q/p_{{T}};#Delta k (k_{{pred,{st}}}-k_{{meas,{st}}})",xbins,xrange[0],xrange[1],ybins,yrange[0],yrange[1])
     h.SetDirectory(0)
     m={}
     if st==3:
@@ -432,12 +432,12 @@ def plot_deltak_vs_curv(data,st,show=True,xrange=(-7000,7000),yrange=(-20000,200
 
     return c,h 
 
-def plot_deltaz_vs_curv(data,st,conv_k=False, conv_z=False,show=False,xrange=(-7000,7000),yrange=(-10000,10000)):
+def plot_deltaz_vs_curv(data,st,conv_k=False, conv_z=False,show=False,xrange=(-7000,7000),yrange=(-10000,10000),xbins=100,ybins=100):
     if not show:
         ROOT.gROOT.SetBatch(True)
     direc=make_plot_dir("deltaz_vs_curv")
     c=ROOT.TCanvas(f"c_dz_curv_{st}","",800,600)
-    h=ROOT.TH2F(f"h_dz_curv_{st}",f"(z_{{pred,{st}}}-z_{{meas,{st}}}) vs curvature;gen q/p_{{T}};#Delta z (z_{{pred,{st}}}-z_{{meas,{st}}})",100,xrange[0],xrange[1],100,yrange[0],yrange[1])
+    h=ROOT.TH2F(f"h_dz_curv_{st}",f"(z_{{pred,{st}}}-z_{{meas,{st}}}) vs curvature;gen q/p_{{T}};#Delta z (z_{{pred,{st}}}-z_{{meas,{st}}})",xbins,xrange[0],xrange[1],ybins,yrange[0],yrange[1])
     h.SetDirectory(0)
     m={}
     if conv_k != conv_z:
@@ -494,7 +494,7 @@ def plot_deltaz_vs_curv(data,st,conv_k=False, conv_z=False,show=False,xrange=(-7
     f.Close()
     return c,c2,h,p
 
-def plot_deltaz_vs_curv_to_vtx(data,show=False,xrange=(-7000,7000),yrange=(-10000,10000), conv_k=False, conv_z=False):
+def plot_deltaz_vs_curv_to_vtx(data,show=False,xrange=(-7000,7000),yrange=(-10000,10000), conv_k=False, conv_z=False,xbins=100,ybins=100):
     #currently i dont have the option to convert k and z to real coords. 
     #will have to obtain dR for the converted case (dR=-0.579 is for non-converted)
     st="vtx"
@@ -502,7 +502,7 @@ def plot_deltaz_vs_curv_to_vtx(data,show=False,xrange=(-7000,7000),yrange=(-1000
         ROOT.gROOT.SetBatch(True)
     direc=make_plot_dir("deltaz_vs_curv")
     c=ROOT.TCanvas(f"c_dz_curv_{st}","",800,600)
-    h=ROOT.TH2F(f"h_dz_curv_{st}",f"(z_{{pred,{st}}}-z_{{meas,{st}}}) vs curvature;gen q/p_{{T}};#Delta z (z_{{pred,{st}}}-z_{{meas,{st}}})",100,xrange[0],xrange[1],100,yrange[0],yrange[1])
+    h=ROOT.TH2F(f"h_dz_curv_{st}",f"(z_{{pred,{st}}}-z_{{meas,{st}}}) vs curvature;gen q/p_{{T}};#Delta z (z_{{pred,{st}}}-z_{{meas,{st}}})",xbins,xrange[0],xrange[1],ybins,yrange[0],yrange[1])
     h.SetDirectory(0)
     m={}
     if conv_k!=conv_z:
