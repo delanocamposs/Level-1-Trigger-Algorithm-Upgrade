@@ -4,7 +4,7 @@ Code related to algorithm upgrades of the CMS Level 1 Muon Trigger.
 
 If a new plot needs to be made, add the function in `interactive_plotters.py`.
 Each function takes `data` and `station`, where `data` comes from the main
-`event_loop` function in `dummy_z.py`.
+`event_loop` function in `main.py`.
 
 Example that plots Δz vs pT for station 1:
 
