@@ -1,6 +1,6 @@
 import ROOT 
 import numpy as np 
-from dummy_z import event_loop
+from main import event_loop
 from trigger_helpers import *
 import os 
 
