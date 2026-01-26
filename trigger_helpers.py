@@ -8,10 +8,8 @@ from trigger_helpers import *
 from itertools import permutations
 
 ROOT.FWLiteEnabler.enable()
-events=Events("DY_Phase2_200_merged.root")
-thetahandle=Handle("L1Phase2MuDTThContainer")
 genhandle=Handle("vector<reco::GenParticle>")
-
+KMTFhandle=Handle("vector<l1t::SAMuon>")
 
 def eta_from_z(z_cm,R_cm):
     hyp=math.hypot(z_cm,R_cm)
@@ -103,12 +101,12 @@ def match_indices_global(listA,listB,max_diff=0.3):
     return match_idx
     
 
-def get_gen_muons_eta(event,pt_min=0,pt_max=1000):
+def get_gen_muons_eta(event,pt_min=0,pt_max=1000,eta_max=1.3):
     event.getByLabel("genParticles", genhandle)
-    val=[float(g.eta()) for g in genhandle.product() if abs(g.pdgId()) == 13 and g.status() == 1 and abs(g.eta())<1.3 and pt_min<g.pt()<pt_max]
+    val=[float(g.eta()) for g in genhandle.product() if abs(g.pdgId()) == 13 and g.status() == 1 and abs(g.eta())<eta_max and pt_min<g.pt()<pt_max]
     return val
 
-def get_gen_muons_z(event,st,pt_min=0,pt_max=1000):
+def get_gen_muons_z(event,st,pt_min=0,pt_max=1000,eta_max=1.3):
     event.getByLabel("genParticles", genhandle)
     if st==1:
         r=402
@@ -118,41 +116,52 @@ def get_gen_muons_z(event,st,pt_min=0,pt_max=1000):
         r=597.5
     denom=np.tan(2*np.arctan(np.exp(-1*float(g.eta))))
     gen_z=(r)/(denom)
-    val=[float(gen_z) for g in genhandle.product() if abs(g.pdgId()) == 13 and g.status() == 1 and abs(g.eta())<1.3 and pt_min<g.pt()<pt_max]
+    val=[float(gen_z) for g in genhandle.product() if abs(g.pdgId()) == 13 and g.status() == 1 and abs(g.eta())<eta_max and pt_min<g.pt()<pt_max]
     return val
 
-def get_gen_muons_pt(event,pt_min=0,pt_max=1000):
+def get_gen_muons_pt(event,pt_min=0,pt_max=1000,eta_max=1.3):
     event.getByLabel("genParticles", genhandle)
-    val=[float(g.pt()) for g in genhandle.product() if abs(g.pdgId()) == 13 and g.status() == 1 and abs(g.eta())<1.3 and pt_min<g.pt()<pt_max]
+    val=[float(g.pt()) for g in genhandle.product() if abs(g.pdgId()) == 13 and g.status() == 1 and abs(g.eta())<eta_max and pt_min<g.pt()<pt_max]
     return val
 
-def get_gen_muons_theta(event,pt_min=0,pt_max=1000):
+def get_gen_muons_theta(event,pt_min=0,pt_max=1000,eta_max=1.3):
     event.getByLabel("genParticles", genhandle)
-    val=[float(g.p4().theta()) for g in genhandle.product() if abs(g.pdgId()) == 13 and g.status() == 1 and abs(g.eta())<1.3 and pt_min<g.pt()<pt_max]
+    val=[float(g.p4().theta()) for g in genhandle.product() if abs(g.pdgId()) == 13 and g.status() == 1 and abs(g.eta())<eta_max and pt_min<g.pt()<pt_max]
     return val
 
-def get_gen_muons_vz(event,pt_min=0,pt_max=1000):
+def get_gen_muons_vz(event,pt_min=0,pt_max=1000,eta_max=1.3):
     event.getByLabel("genParticles", genhandle)
-    val=[float(g.vz()) for g in genhandle.product() if abs(g.pdgId())==13 and g.status()==1 and abs(g.eta())<1.3 and pt_min<g.pt()<pt_max]
+    val=[float(g.vz()) for g in genhandle.product() if abs(g.pdgId())==13 and g.status()==1 and abs(g.eta())<eta_max and pt_min<g.pt()<pt_max]
     return val
 
-def get_gen_muons_vx(event,pt_min=0,pt_max=1000):
+def get_gen_muons_vx(event,pt_min=0,pt_max=1000,eta_max=1.3):
     event.getByLabel("genParticles", genhandle)
-    val=[float(g.vx()) for g in genhandle.product() if abs(g.pdgId())==13 and g.status()==1 and abs(g.eta())<1.3 and pt_min<g.pt()<pt_max]
+    val=[float(g.vx()) for g in genhandle.product() if abs(g.pdgId())==13 and g.status()==1 and abs(g.eta())<eta_max and pt_min<g.pt()<pt_max]
     return val
 
-def get_gen_muons_vy(event,pt_min=0,pt_max=1000):
+def get_gen_muons_vy(event,pt_min=0,pt_max=1000,eta_max=1.3):
     event.getByLabel("genParticles", genhandle)
-    val=[float(g.vy()) for g in genhandle.product() if abs(g.pdgId())==13 and g.status()==1 and abs(g.eta())<1.3 and pt_min<g.pt()<pt_max]
+    val=[float(g.vy()) for g in genhandle.product() if abs(g.pdgId())==13 and g.status()==1 and abs(g.eta())<eta_max and pt_min<g.pt()<pt_max]
     return val
 
-def get_gen_muons_curv(event,pt_min=0,pt_max=1000):
+def get_gen_muons_curv(event,pt_min=0,pt_max=1000,eta_max=1.3):
     event.getByLabel("genParticles", genhandle)
-    val=[float((g.charge())/(g.pt())) for g in genhandle.product() if abs(g.pdgId())==13 and g.status()==1 and abs(g.eta())<1.3 and pt_min<g.pt()<pt_max]
+    val=[float((g.charge())/(g.pt())) for g in genhandle.product() if abs(g.pdgId())==13 and g.status()==1 and abs(g.eta())<eta_max and pt_min<g.pt()<pt_max]
     return val
 
 def make_plot_dir(name):
     outdir = os.path.join("plot_images", name)
     os.makedirs(outdir, exist_ok=True)
     return outdir
+
+def get_KMTF_muons_phPt(event, vertex, pt_min=0, pt_max=1000, eta_max=1.3):
+    event.getByLabel("l1tKMTFMuonsGmt",vertex,"L1P2GT", KMTFhandle)
+    val=[float(g.phPt()) for g in KMTFhandle.product() if abs(g.phEta())<eta_max and pt_min<g.phPt()<pt_max]
+    return val
+
+def get_KMTF_muons_phEta(event, vertex, pt_min=0, pt_max=1000, eta_max=1.3):
+    event.getByLabel("l1tKMTFMuonsGmt",vertex,"L1P2GT", KMTFhandle)
+    val=[float(g.phEta()) for g in KMTFhandle.product() if abs(g.phEta())<eta_max and pt_min<g.phPt()<pt_max]
+    return val
+
 

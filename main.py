@@ -6,11 +6,8 @@ from DataFormats.FWLite import Events, Handle
 from trigger_helpers import *
 
 ROOT.FWLiteEnabler.enable()
-events=Events("DY_Phase2_200_merged.root")
-thetahandle=Handle("L1Phase2MuDTThContainer")
-genhandle=Handle("vector<reco::GenParticle>")
 
-#the radii are obtained from interative_plotter.py plot_rho function per stattion. obtained from data.
+#the radii are obtained from interative_plotter.py plot_rho function per stattion. obtained from simulation.
 R_MB_CM={1:445.0,2:526,3:635}
 stations=(1,2,3)
 ZRES_CONV=65536.0/1500.0
@@ -18,25 +15,39 @@ KRES_CONV=65536.0/2
 CURV_CONV=(1<<15)/1.25
 
 def event_loop(event_num=100, conv_z=False, conv_k=False):
+    #events=Events("DY_Phase2_200_merged.root")
+    events=Events("output_DY_Phase2_L1T_all.root")
+    thetahandle=Handle("L1Phase2MuDTThContainer")
+    genhandle=Handle("vector<reco::GenParticle>")
+    KMTFhandle=Handle("vector<l1t::SAMuon>")
+
     gen_eta_glob, gen_z_glob, gen_pt_glob, gen_vz_glob, gen_vr_glob, gen_curv_glob={st: [] for st in stations}, {st: [] for st in stations}, {st: [] for st in stations}, {st:[] for st in stations}, {st:[] for st in stations}, {st:[] for st in stations}
     stub_eta_glob, stub_z_glob, stub_k_glob={st: [] for st in stations}, {st: [] for st in stations}, {st:[] for st in stations}
     delta_z_glob={st:[] for st in stations}
     mu_id_glob={st:[] for st in stations}
+
+    #global arrays outside event loop for KMTF muon information.
+    #adding unmatched pt dictionary. this means gen muon pt straight from gen particles without any matching algo to stubs. no station split because genparticles doesnt know about stations.
+    gen_pt_unmatched_glob=[]
+    gen_pt_KMTF_matched_glob=[]
+
     for i, event in enumerate(events):
-        if i==event_num+1:
+        if i>=event_num+1:
             break
         event.getByLabel("dtTriggerPhase2PrimitiveDigis", "", "L1P2GT", thetahandle)
+        
+        #this container is needed for stub information because the C++ class which defines the dataformat is not iterable as thetahandle.product(). need to get container then iterate later in loop
         container=thetahandle.product().getContainer()
     
         #grab vector of gen muon pT, eta, vz,vy,vx, etc per event
         #also save a gen_z_event which is station-dependent. filled later based on matching (genParticles has no z information - must build the z).
-        gen_pt_event=get_gen_muons_pt(event,pt_min=0,pt_max=1000)
-        gen_eta_event=get_gen_muons_eta(event,pt_min=0,pt_max=1000)
-        gen_vz_event=get_gen_muons_vz(event,pt_min=0,pt_max=1000)
-        gen_vy_event=get_gen_muons_vy(event,pt_min=0,pt_max=1000)
-        gen_vx_event=get_gen_muons_vx(event,pt_min=0,pt_max=1000)
+        gen_pt_event=get_gen_muons_pt(event,pt_min=0,pt_max=1000,eta_max=0.83)
+        gen_eta_event=get_gen_muons_eta(event,pt_min=0,pt_max=1000,eta_max=0.83)
+        gen_vz_event=get_gen_muons_vz(event,pt_min=0,pt_max=1000,eta_max=0.83)
+        gen_vy_event=get_gen_muons_vy(event,pt_min=0,pt_max=1000,eta_max=0.83)
+        gen_vx_event=get_gen_muons_vx(event,pt_min=0,pt_max=1000,eta_max=0.83)
         gen_vr_event=np.sqrt((np.array(gen_vx_event))**2+(np.array(gen_vy_event))**2)
-        gen_curv_event=get_gen_muons_curv(event, pt_min=0, pt_max=1000)
+        gen_curv_event=get_gen_muons_curv(event, pt_min=0, pt_max=1000,eta_max=0.83)
     
         if len(gen_pt_event)!=len(gen_eta_event):
             print("ERROR: size mismatch")
@@ -60,11 +71,13 @@ def event_loop(event_num=100, conv_z=False, conv_k=False):
         
         delta_z_event={st: [] for st in stations}
         mu_id_by_st={st:[] for st in stations}
-    
+
         #loop through stub hits in each event to obtain:
         #stub eta, stub theta and store in above arrays
         for stub in container:
             st=int(stub.stNum())
+            if st not in R_MB_CM:
+                continue
             z_raw=stub.z()
             k_raw=stub.k()
             z_phys=z_raw/ZRES_CONV
@@ -124,6 +137,24 @@ def event_loop(event_num=100, conv_z=False, conv_k=False):
             delta_z_glob[st].extend(np.array(gen_z_matched_by_sta[st])-np.array(stub_z_matched_by_sta[st]))
             stub_eta_glob[st].extend(np.array(stub_eta_matched_by_sta[st]))
             mu_id_glob[st].extend(np.array(mu_id_by_st[st])) 
+
+
+        #this loop will attempt to match genmuons to KMTF muons if eta<0.83 and pT>20GeV. used for efficiency plot. 
+        #this piece of the code is used to return information about efficiency vs pT in "===================".
+        #putting it at the end since it uses different collection (l1tKMTFGmt vs L1Phase2MuDTThContainer). both studies use genParticles however.
+#=====================================================================================================================
+        gen_pt_unmatched_glob.extend(np.array(gen_pt_event)) #add unmatched gen muon pt to global array WITHOUT 20 GEV PT CUT! denom of efficiency curve. 
+        KMTF_phPt_event=get_KMTF_muons_phPt(event, "prompt",pt_min=20,eta_max=0.83)
+        KMTF_phEta_event=get_KMTF_muons_phEta(event, "prompt",pt_min=20,eta_max=0.83)
+        gen_pt_KMTF_matched_event=[]
+
+        #match all gen muons in acceptance to pT>20 KMTF muons
+        match_idx_KMTF=match_indices_global(gen_eta_event, KMTF_phEta_event)
+        for mu_idx, KMTF_idx in enumerate(match_idx_KMTF):
+            if KMTF_idx is not None:
+                gen_pt_KMTF_matched_event.append(gen_pt_event[mu_idx])
+        gen_pt_KMTF_matched_glob.extend(gen_pt_KMTF_matched_event)
+#=====================================================================================================================
     print(f"successful event loop. events: {event_num}")
-    return_dict={"gen_eta":gen_eta_glob, "gen_pt":gen_pt_glob, "gen_z":gen_z_glob, "stub_z":stub_z_glob, "delta_z":delta_z_glob, "gen_vz":gen_vz_glob, "gen_vr":gen_vr_glob, "stub_k":stub_k_glob, "stub_eta":stub_eta_glob, "mu_id":mu_id_glob, "gen_curv":gen_curv_glob}
+    return_dict={"gen_eta":gen_eta_glob, "gen_pt":gen_pt_glob, "gen_z":gen_z_glob, "stub_z":stub_z_glob, "delta_z":delta_z_glob, "gen_vz":gen_vz_glob, "gen_vr":gen_vr_glob, "stub_k":stub_k_glob, "stub_eta":stub_eta_glob, "mu_id":mu_id_glob, "gen_curv":gen_curv_glob, "gen_pt_unmatched":gen_pt_unmatched_glob, "gen_pt_KMTF_matched":gen_pt_KMTF_matched_glob}
     return return_dict

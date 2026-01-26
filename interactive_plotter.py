@@ -1,4 +1,5 @@
-import ROOT 
+import ROOT
+from array import array 
 import numpy as np 
 from main import event_loop
 from trigger_helpers import *
@@ -555,6 +556,31 @@ def plot_deltaz_vs_curv_to_vtx(data,show=False,xrange=(-7000,7000),yrange=(-1000
     c.Write(c.GetName(),ROOT.TObject.kOverwrite)
     f.Close()
     return c,c2,h,p
+
+def plot_eff_vs_pT(data,show=False,pt_bins=(0,5,10,15,20,25,30,35,40,45,50,55,60,65,70, 75,80,85,90,95,100,105,110,115,120)):
+    if not show:
+        ROOT.gROOT.SetBatch(True)
+    direc=make_plot_dir("kmtf_eff_vs_pt")
+    bins=array('d',pt_bins)
+    hDen=ROOT.TH1D("hDen",";gen p_{T} [GeV];Efficiency (matched to L1 Muon)",len(pt_bins)-1,bins)
+    hNum=ROOT.TH1D("hNum",";gen p_{T} [GeV];Efficiency (matched to L1 Muon)",len(pt_bins)-1,bins)
+    hDen.SetDirectory(0);hNum.SetDirectory(0)
+    for pt in data["gen_pt_unmatched"]:
+        hDen.Fill(float(pt))
+    for pt in data["gen_pt_KMTF_matched"]:
+        hNum.Fill(float(pt))
+    eff=ROOT.TEfficiency(hNum,hDen)
+    c=ROOT.TCanvas("c_kmtf_eff","",800,600)
+    eff.Draw("AP")
+    c.SaveAs(f"{direc}/kmtf_eff_vs_pt.png")
+    f=ROOT.TFile("kmtf_eff_vs_pt.root","RECREATE")
+    hDen.Write();hNum.Write();eff.Write();c.Write()
+    f.Close()
+    store_plots["canvas"]["kmtf_eff_vs_pt"]=c
+    store_plots["histos"]["hDen_kmtf"]=hDen
+    store_plots["histos"]["hNum_kmtf"]=hNum
+    store_plots["histos"]["eff_kmtf"]=eff
+    return c,eff
 
 
 if __name__=="__main__":
