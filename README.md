@@ -2,6 +2,13 @@
 
 Code related to algorithm upgrades of the CMS Level 1 Muon Trigger.
 
+Step 1 is to process data which uses `submitChain.py` together with `run.py`. `run.py` specifies settings of the driver command which produces the output data files which will ultimately be sent to your eos area configured inside `run.py`. The code is currently setup to process a Drell-Yan full dataset and points to my eos area in `run.py`. change these and also change the settings in `submitChain.py` to keep more collection modules or remove some depending on the goals: 
+
+```text
+voms-proxy-init --voms cms --valid 192:00
+python3 submitChain.py
+```
+
 If a new plot needs to be made, add the function in `interactive_plotters.py`.
 Each function takes `data` and `station`, where `data` comes from the main
 `event_loop` function in `main.py`.
