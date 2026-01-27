@@ -10,6 +10,7 @@ from itertools import permutations
 ROOT.FWLiteEnabler.enable()
 genhandle=Handle("vector<reco::GenParticle>")
 KMTFhandle=Handle("vector<l1t::SAMuon>")
+SAMuonshandle=Handle("vector<l1t::SAMuon>")
 
 def eta_from_z(z_cm,R_cm):
     hyp=math.hypot(z_cm,R_cm)
@@ -163,5 +164,19 @@ def get_KMTF_muons_phEta(event, vertex, pt_min=0, pt_max=1000, eta_max=1.3):
     event.getByLabel("l1tKMTFMuonsGmt",vertex,"L1P2GT", KMTFhandle)
     val=[float(g.phEta()) for g in KMTFhandle.product() if abs(g.phEta())<eta_max and pt_min<g.phPt()<pt_max]
     return val
+
+def get_SAMuons_phPt(event, vertex, pt_min=0, pt_max=1000, eta_max=1.3):
+    event.getByLabel("l1tSAMuonsGmt",vertex,"L1P2GT", SAMuonshandle)
+    val=[float(g.phPt()) for g in SAMuonshandle.product() if abs(g.phEta())<eta_max and pt_min<g.phPt()<pt_max]
+    return val
+
+def get_SAMuons_phEta(event, vertex, pt_min=0, pt_max=1000, eta_max=1.3):
+    event.getByLabel("l1tSAMuonsGmt",vertex,"L1P2GT", SAMuonshandle)
+    val=[float(g.phEta()) for g in SAMuonshandle.product() if abs(g.phEta())<eta_max and pt_min<g.phPt()<pt_max]
+    return val
+
+
+
+
 
 

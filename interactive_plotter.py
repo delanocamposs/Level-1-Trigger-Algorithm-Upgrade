@@ -557,7 +557,7 @@ def plot_deltaz_vs_curv_to_vtx(data,show=False,xrange=(-7000,7000),yrange=(-1000
     f.Close()
     return c,c2,h,p
 
-def plot_eff_vs_pT(data,show=False,pt_bins=(0,5,10,15,20,25,30,35,40,45,50,55,60,65,70, 75,80,85,90,95,100,105,110,115,120), title="KMTF efficiency vs gen p_{T};gen p_{T} [GeV];Efficiency (prompt)"):
+def plot_eff_vs_pT(data,eff_data,show=False,pt_bins=(0,5,10,15,20,25,30,35,40,45,50,55,60,65,70, 75,80,85,90,95,100,105,110,115,120), title="KMTF efficiency vs gen p_{T};gen p_{T} [GeV];Efficiency (prompt)"):
     if not show:
         ROOT.gROOT.SetBatch(True)
     direc=make_plot_dir("kmtf_eff_vs_pt")
@@ -567,7 +567,7 @@ def plot_eff_vs_pT(data,show=False,pt_bins=(0,5,10,15,20,25,30,35,40,45,50,55,60
     hDen.SetDirectory(0);hNum.SetDirectory(0)
     for pt in data["gen_pt_unmatched"]:
         hDen.Fill(float(pt))
-    for pt in data["gen_pt_KMTF_matched"]:
+    for pt in eff_data:
         hNum.Fill(float(pt))
     eff=ROOT.TEfficiency(hNum,hDen)
     c=ROOT.TCanvas("c_kmtf_eff","",800,600)
@@ -583,7 +583,7 @@ def plot_eff_vs_pT(data,show=False,pt_bins=(0,5,10,15,20,25,30,35,40,45,50,55,60
     store_plots["histos"]["eff_kmtf"]=eff
     return c,eff
 
-def plot_eff_vs_pT_prompt_displaced(data,show=False,pt_bins=(0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40,45,50,55,60,65,70,75,80,85,90,120,150,200),title="KMTF efficiency vs gen p_{T};gen p_{T} [GeV];Efficiency",color_prompt=ROOT.kRed,color_displaced=ROOT.kBlue):
+def plot_eff_vs_pT_prompt_displaced(prompt_data,displaced_data,show=False,pt_bins=(0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40,45,50,55,60,65,70,75,80,85,90,120,150,200),title="KMTF efficiency vs gen p_{T};gen p_{T} [GeV];Efficiency",color_prompt=ROOT.kRed,color_displaced=ROOT.kBlue):
     if not show:
         ROOT.gROOT.SetBatch(True)
     direc=make_plot_dir("kmtf_eff_vs_pt")
@@ -594,9 +594,9 @@ def plot_eff_vs_pT_prompt_displaced(data,show=False,pt_bins=(0,2,4,6,8,10,12,14,
     hDen.SetDirectory(0);hNumP.SetDirectory(0);hNumD.SetDirectory(0)
     for pt in data["gen_pt_unmatched"]:
         hDen.Fill(float(pt))
-    for pt in data["gen_pt_KMTF_prompt_matched"]:
+    for pt in prompt_data:
         hNumP.Fill(float(pt))
-    for pt in data["gen_pt_KMTF_displaced_matched"]:
+    for pt in displaced_data:
         hNumD.Fill(float(pt))
     effP=ROOT.TEfficiency(hNumP,hDen)
     effD=ROOT.TEfficiency(hNumD,hDen)
