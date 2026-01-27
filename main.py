@@ -29,7 +29,8 @@ def event_loop(event_num=100, conv_z=False, conv_k=False):
     #global arrays outside event loop for KMTF muon information.
     #adding unmatched pt dictionary. this means gen muon pt straight from gen particles without any matching algo to stubs. no station split because genparticles doesnt know about stations.
     gen_pt_unmatched_glob=[]
-    gen_pt_KMTF_matched_glob=[]
+    gen_pt_KMTF_matched_displaced_glob=[]
+    gen_pt_KMTF_matched_prompt_glob=[]
 
     for i, event in enumerate(events):
         if i>=event_num+1:
@@ -144,17 +145,25 @@ def event_loop(event_num=100, conv_z=False, conv_k=False):
         #putting it at the end since it uses different collection (l1tKMTFGmt vs L1Phase2MuDTThContainer). both studies use genParticles however.
 #=====================================================================================================================
         gen_pt_unmatched_glob.extend(np.array(gen_pt_event)) #add unmatched gen muon pt to global array WITHOUT 20 GEV PT CUT! denom of efficiency curve. 
-        KMTF_phPt_event=get_KMTF_muons_phPt(event, "prompt",pt_min=20,eta_max=0.83)
-        KMTF_phEta_event=get_KMTF_muons_phEta(event, "prompt",pt_min=20,eta_max=0.83)
-        gen_pt_KMTF_matched_event=[]
+        KMTF_phEta_displaced_event=get_KMTF_muons_phEta(event, "displaced",pt_min=20,eta_max=0.83)
+        KMTF_phEta_prompt_event=get_KMTF_muons_phEta(event, "prompt",pt_min=20,eta_max=0.83)
+        gen_pt_KMTF_matched_displaced_event=[]
+        gen_pt_KMTF_matched_prompt_event=[]
 
         #match all gen muons in acceptance to pT>20 KMTF muons
-        match_idx_KMTF=match_indices_global(gen_eta_event, KMTF_phEta_event)
-        for mu_idx, KMTF_idx in enumerate(match_idx_KMTF):
+        match_idx_KMTF_displaced=match_indices_global(gen_eta_event, KMTF_phEta_displaced_event)
+        match_idx_KMTF_prompt=match_indices_global(gen_eta_event, KMTF_phEta_prompt_event)
+
+        for mu_idx, KMTF_idx in enumerate(match_idx_KMTF_displaced):
             if KMTF_idx is not None:
-                gen_pt_KMTF_matched_event.append(gen_pt_event[mu_idx])
-        gen_pt_KMTF_matched_glob.extend(gen_pt_KMTF_matched_event)
+                gen_pt_KMTF_matched_displaced_event.append(gen_pt_event[mu_idx])
+        gen_pt_KMTF_matched_displaced_glob.extend(gen_pt_KMTF_matched_displaced_event)
+
+        for mu_idx, KMTF_idx in enumerate(match_idx_KMTF_prompt):
+            if KMTF_idx is not None:
+                gen_pt_KMTF_matched_prompt_event.append(gen_pt_event[mu_idx])
+        gen_pt_KMTF_matched_prompt_glob.extend(gen_pt_KMTF_matched_prompt_event)
 #=====================================================================================================================
     print(f"successful event loop. events: {event_num}")
-    return_dict={"gen_eta":gen_eta_glob, "gen_pt":gen_pt_glob, "gen_z":gen_z_glob, "stub_z":stub_z_glob, "delta_z":delta_z_glob, "gen_vz":gen_vz_glob, "gen_vr":gen_vr_glob, "stub_k":stub_k_glob, "stub_eta":stub_eta_glob, "mu_id":mu_id_glob, "gen_curv":gen_curv_glob, "gen_pt_unmatched":gen_pt_unmatched_glob, "gen_pt_KMTF_matched":gen_pt_KMTF_matched_glob}
+    return_dict={"gen_eta":gen_eta_glob, "gen_pt":gen_pt_glob, "gen_z":gen_z_glob, "stub_z":stub_z_glob, "delta_z":delta_z_glob, "gen_vz":gen_vz_glob, "gen_vr":gen_vr_glob, "stub_k":stub_k_glob, "stub_eta":stub_eta_glob, "mu_id":mu_id_glob, "gen_curv":gen_curv_glob, "gen_pt_unmatched":gen_pt_unmatched_glob, "gen_pt_KMTF_displaced_matched":gen_pt_KMTF_matched_displaced_glob, "gen_pt_KMTF_prompt_matched":gen_pt_KMTF_matched_prompt_glob}
     return return_dict

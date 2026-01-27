@@ -557,7 +557,7 @@ def plot_deltaz_vs_curv_to_vtx(data,show=False,xrange=(-7000,7000),yrange=(-1000
     f.Close()
     return c,c2,h,p
 
-def plot_eff_vs_pT(data,show=False,pt_bins=(0,5,10,15,20,25,30,35,40,45,50,55,60,65,70, 75,80,85,90,95,100,105,110,115,120)):
+def plot_eff_vs_pT(data,show=False,pt_bins=(0,5,10,15,20,25,30,35,40,45,50,55,60,65,70, 75,80,85,90,95,100,105,110,115,120), title="KMTF efficiency vs gen p_{T};gen p_{T} [GeV];Efficiency (prompt)"):
     if not show:
         ROOT.gROOT.SetBatch(True)
     direc=make_plot_dir("kmtf_eff_vs_pt")
@@ -571,6 +571,7 @@ def plot_eff_vs_pT(data,show=False,pt_bins=(0,5,10,15,20,25,30,35,40,45,50,55,60
         hNum.Fill(float(pt))
     eff=ROOT.TEfficiency(hNum,hDen)
     c=ROOT.TCanvas("c_kmtf_eff","",800,600)
+    eff.SetTitle(title)
     eff.Draw("AP")
     c.SaveAs(f"{direc}/kmtf_eff_vs_pt.png")
     f=ROOT.TFile("kmtf_eff_vs_pt.root","RECREATE")
@@ -581,6 +582,47 @@ def plot_eff_vs_pT(data,show=False,pt_bins=(0,5,10,15,20,25,30,35,40,45,50,55,60
     store_plots["histos"]["hNum_kmtf"]=hNum
     store_plots["histos"]["eff_kmtf"]=eff
     return c,eff
+
+def plot_eff_vs_pT_prompt_displaced(data,show=False,pt_bins=(0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40,45,50,55,60,65,70,75,80,85,90,120,150,200),title="KMTF efficiency vs gen p_{T};gen p_{T} [GeV];Efficiency",color_prompt=ROOT.kRed,color_displaced=ROOT.kBlue):
+    if not show:
+        ROOT.gROOT.SetBatch(True)
+    direc=make_plot_dir("kmtf_eff_vs_pt")
+    bins=array('d',pt_bins)
+    hDen=ROOT.TH1D("hDen","; ; ",len(pt_bins)-1,bins)
+    hNumP=ROOT.TH1D("hNumP","; ; ",len(pt_bins)-1,bins)
+    hNumD=ROOT.TH1D("hNumD","; ; ",len(pt_bins)-1,bins)
+    hDen.SetDirectory(0);hNumP.SetDirectory(0);hNumD.SetDirectory(0)
+    for pt in data["gen_pt_unmatched"]:
+        hDen.Fill(float(pt))
+    for pt in data["gen_pt_KMTF_prompt_matched"]:
+        hNumP.Fill(float(pt))
+    for pt in data["gen_pt_KMTF_displaced_matched"]:
+        hNumD.Fill(float(pt))
+    effP=ROOT.TEfficiency(hNumP,hDen)
+    effD=ROOT.TEfficiency(hNumD,hDen)
+    effP.SetName("eff_prompt");effD.SetName("eff_displaced")
+    effP.SetTitle(title)
+    effP.SetLineColor(color_prompt);effP.SetMarkerColor(color_prompt);effP.SetMarkerStyle(20)
+    effD.SetLineColor(color_displaced);effD.SetMarkerColor(color_displaced);effD.SetMarkerStyle(21)
+    c=ROOT.TCanvas("c_kmtf_eff_pd","",800,600)
+    effP.Draw("AP")
+    effD.Draw("P SAME")
+    leg=ROOT.TLegend(0.60,0.20,0.88,0.35)
+    leg.SetBorderSize(0);leg.SetFillStyle(0)
+    leg.AddEntry(effP,"prompt","lp")
+    leg.AddEntry(effD,"displaced","lp")
+    leg.Draw()
+    c.SaveAs(f"{direc}/kmtf_eff_vs_pt_prompt_displaced.png")
+    f=ROOT.TFile("kmtf_eff_vs_pt_prompt_displaced.root","RECREATE")
+    hDen.Write();hNumP.Write();hNumD.Write();effP.Write();effD.Write();c.Write();f.Close()
+    store_plots["canvas"]["kmtf_eff_vs_pt_prompt_displaced"]=c
+    store_plots["histos"]["hDen_kmtf"]=hDen
+    store_plots["histos"]["hNumP_kmtf"]=hNumP
+    store_plots["histos"]["hNumD_kmtf"]=hNumD
+    store_plots["histos"]["eff_prompt_kmtf"]=effP
+    store_plots["histos"]["eff_displaced_kmtf"]=effD
+    return c,effP,effD
+
 
 
 if __name__=="__main__":
