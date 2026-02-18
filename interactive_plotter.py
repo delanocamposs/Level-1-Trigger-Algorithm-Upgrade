@@ -582,7 +582,7 @@ def plot_eff_vs_pT(data,eff_data,show=False,pt_bins=(0,5,10,15,20,25,30,35,40,45
     store_plots["histos"]["eff_kmtf"]=eff
     return c,eff
 
-def plot_eff_vs_pT_prompt_displaced(prompt_data,displaced_data,show=False,pt_bins=(0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40,45,50,55,60,65,70,75,80,85,90,120,150,200),title="KMTF efficiency vs gen p_{T};gen p_{T} [GeV];Efficiency",color_prompt=ROOT.kRed,color_displaced=ROOT.kBlue):
+def plot_eff_vs_pT_prompt_displaced(data,prompt_data,displaced_data,show=False,pt_bins=(0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40,45,50,55,60,65,70,75,80,85,90,120,150,200),title="KMTF efficiency vs gen p_{T};gen p_{T} [GeV];Efficiency",color_prompt=ROOT.kRed,color_displaced=ROOT.kBlue):
     if not show:
         ROOT.gROOT.SetBatch(True)
     direc=make_plot_dir("kmtf_eff_vs_pt")
