@@ -4,7 +4,6 @@ import numpy as np
 import ROOT
 import matplotlib.pyplot as plt
 from DataFormats.FWLite import Events, Handle
-from trigger_helpers import *
 from itertools import permutations
 
 ROOT.FWLiteEnabler.enable()

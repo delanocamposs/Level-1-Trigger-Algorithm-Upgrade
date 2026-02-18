@@ -161,7 +161,6 @@ def plot_yslices(data,station,key,xvar,xunit,yvar,yunit,rebinx=20,min_entries=10
     hx.SetMarkerSize(1.2)
     hx.SetLineWidth(2)
     hx.Draw("PE")
-    hx.Draw("PE")
     if sigma_xrange is not None:
         hx.GetXaxis().SetRangeUser(sigma_xrange[0],sigma_xrange[1])
     if sigma_yrange is not None:
