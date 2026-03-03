@@ -1,8 +1,8 @@
 **L1T Kalman Filter Upgrade**
 
-Code related to algorithm upgrades of the CMS Level 1 Muon Trigger.
+Code related to Kalman Filter algorithm upgrades of the CMS Level 1 Global Muon Trigger.
 
-Step 1 is to setup an up-to-date cmsenv, and run a cmsDriver command that runs the emulator and will produce a python file (--fileout argument), and a processed data file. The example below processes 10 events with -n for a DY sample through --filein argument and runs L1 and L1P2GT processes for the emulator through -s argument. Per these insturctions for the emulator recipe: https://cmsl1tofflinesw.docs.cern.ch/Phase2/phase2recipe/ look for a recent version of CMSSW with scram then setup an env with it:
+Step 1 is to setup an up-to-date cmsenv, and run a cmsDriver command that runs the emulator and will produce a python file (--fileout argument), and a processed data file. The example below processes 10 events with -n for a DY sample through --filein argument and runs L1 and L1P2GT processes for the emulator through -s argument. Per these insturctions for the emulator recipe: https://cmsl1tofflinesw.docs.cern.ch/Phase2/phase2recipe/ look for a recent version of CMSSW with scram then setup an env with it. Since this was developing mostly the Kalman Filter code, I use cms-addpkg L1Trigger/Phase2L1GMT:
 
 ```text
 scram list CMSSW_16_1_X_*
