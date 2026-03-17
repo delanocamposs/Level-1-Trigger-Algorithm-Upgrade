@@ -622,7 +622,81 @@ def plot_eff_vs_pT_prompt_displaced(data,prompt_data,displaced_data,show=False,p
     store_plots["histos"]["eff_displaced_kmtf"]=effD
     return c,effP,effD
 
+def plot_eff_vs_eta(data, eff_data, show=False, n_bins=None, eta_bins=(-1.5,-1.4,-1.3,-1.2,-1.1, -1, -.9, -.8, -.7, -.6, -.5,-.4,-.3,-.2,-.1,0,.1,.2,.3,.4,.5,.6,.7,.8,.9,1.1, 1.2, 1.3, 1.4, 1.5), title="KMTF efficiency vs gen #eta;gen #eta [GeV];Efficiency (prompt)", y_range=(0, 1.1)):
+    if not show:
+        ROOT.gROOT.SetBatch(True)
+    direc=make_plot_dir("kmtf_eff_vs_eta")
+    if n_bins is not None:
+        import numpy as np
+        eta_bins = tuple(np.linspace(eta_bins[0], eta_bins[-1], n_bins + 1))
+    bins=array('d',eta_bins)
+    hDen=ROOT.TH1D("hDen",";gen p_{T} [GeV];Efficiency (matched to L1 Muon)",len(eta_bins)-1,bins)
+    hNum=ROOT.TH1D("hNum",";gen p_{T} [GeV];Efficiency (matched to L1 Muon)",len(eta_bins)-1,bins)
+    hDen.SetDirectory(0);hNum.SetDirectory(0)
+    for eta in data["gen_eta_unmatched"]:
+        hDen.Fill(float(eta))
+    for eta in eff_data:
+        hNum.Fill(float(eta))
+    eff=ROOT.TEfficiency(hNum,hDen)
+    c=ROOT.TCanvas("c_kmtf_eff","",800,600)
+    eff.SetTitle(title)
+    eff.Draw("AP")
+    ROOT.gPad.Update()
+    eff.GetPaintedGraph().GetYaxis().SetRangeUser(y_range[0], y_range[1])
+    c.SaveAs(f"{direc}/kmtf_eff_vs_eta.png")
+    f=ROOT.TFile("kmtf_eff_vs_eta.root","RECREATE")
+    hDen.Write();hNum.Write();eff.Write();c.Write()
+    f.Close()
+    store_plots["canvas"]["kmtf_eff_vs_eta"]=c
+    store_plots["histos"]["hDen_kmtf_eta"]=hDen
+    store_plots["histos"]["hNum_kmtf_eta"]=hNum
+    store_plots["histos"]["eff_kmtf_eta"]=eff
+    return c,eff
 
+def plot_eff_vs_eta_prompt_displaced(data,prompt_data,displaced_data,show=False,n_bins=None,eta_bins=(-1.5,-1.4,-1.3,-1.2,-1.1, -1, -.9, -.8, -.7, -.6, -.5,-.4,-.3,-.2,-.1,0,.1,.2,.3,.4,.5,.6,.7,.8,.9,1.1, 1.2, 1.3, 1.4, 1.5),title="KMTF efficiency vs gen #eta;gen #eta [GeV];Efficiency",color_prompt=ROOT.kRed,color_displaced=ROOT.kBlue,y_range=(0,1.1)):
+    if not show:
+        ROOT.gROOT.SetBatch(True)
+    direc=make_plot_dir("kmtf_eff_vs_eta")
+    if n_bins is not None:
+        import numpy as np
+        eta_bins = tuple(np.linspace(eta_bins[0], eta_bins[-1], n_bins + 1))
+    bins=array('d',eta_bins)
+    hDen=ROOT.TH1D("hDen","; ; ",len(eta_bins)-1,bins)
+    hNumP=ROOT.TH1D("hNumP","; ; ",len(eta_bins)-1,bins)
+    hNumD=ROOT.TH1D("hNumD","; ; ",len(eta_bins)-1,bins)
+    hDen.SetDirectory(0);hNumP.SetDirectory(0);hNumD.SetDirectory(0)
+    for eta in data["gen_eta_unmatched"]:
+        hDen.Fill(float(eta))
+    for eta in prompt_data:
+        hNumP.Fill(float(eta))
+    for eta in displaced_data:
+        hNumD.Fill(float(eta))
+    effP=ROOT.TEfficiency(hNumP,hDen)
+    effD=ROOT.TEfficiency(hNumD,hDen)
+    effP.SetName("eff_prompt");effD.SetName("eff_displaced")
+    effP.SetTitle(title)
+    effP.SetLineColor(color_prompt);effP.SetMarkerColor(color_prompt);effP.SetMarkerStyle(20)
+    effD.SetLineColor(color_displaced);effD.SetMarkerColor(color_displaced);effD.SetMarkerStyle(21)
+    c=ROOT.TCanvas("c_kmtf_eff_pd","",800,600)
+    effP.Draw("AP")
+    ROOT.gPad.Update()
+    effP.GetPaintedGraph().GetYaxis().SetRangeUser(y_range[0], y_range[1])
+    effD.Draw("P SAME")
+    leg=ROOT.TLegend(0.60,0.20,0.88,0.35)
+    leg.SetBorderSize(0);leg.SetFillStyle(0)
+    leg.AddEntry(effP,"prompt","lp")
+    leg.AddEntry(effD,"displaced","lp")
+    leg.Draw()
+    c.SaveAs(f"{direc}/kmtf_eff_vs_eta_prompt_displaced.png")
+    f=ROOT.TFile("kmtf_eff_vs_eta_prompt_displaced.root","RECREATE")
+    hDen.Write();hNumP.Write();hNumD.Write();effP.Write();effD.Write();c.Write();f.Close()
+    store_plots["canvas"]["kmtf_eff_vs_eta_prompt_displaced"]=c
+    store_plots["histos"]["hDen_kmtf"]=hDen
+    store_plots["histos"]["hNumP_kmtf"]=hNumP
+    store_plots["histos"]["hNumD_kmtf"]=hNumD
+    store_plots["histos"]["eff_prompt_kmtf"]=effP
+    store_plots["histos"]["eff_displaced_kmtf"]=effD
+    return c,effP,effD
 
 if __name__=="__main__":
     data=event_loop(1000,False,False)
