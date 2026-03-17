@@ -35,6 +35,12 @@ def event_loop(event_num=100, conv_z=False, conv_k=False):
     gen_pt_SAMuons_matched_displaced_glob=[]
     gen_pt_SAMuons_matched_prompt_glob=[]
 
+    gen_eta_unmatched_glob=[]
+    gen_eta_KMTF_matched_displaced_glob=[]
+    gen_eta_KMTF_matched_prompt_glob=[]
+    gen_eta_SAMuons_matched_displaced_glob=[]
+    gen_eta_SAMuons_matched_prompt_glob=[]
+
     for i, event in enumerate(events):
         if i>=event_num:
             break
@@ -185,6 +191,27 @@ def event_loop(event_num=100, conv_z=False, conv_k=False):
             if SAMuons_idx is not None:
                 gen_pt_SAMuons_matched_prompt_event.append(gen_pt_event[mu_idx])
         gen_pt_SAMuons_matched_prompt_glob.extend(gen_pt_SAMuons_matched_prompt_event)
+
+        for mu_idx in range(len(gen_pt_event)):
+            if gen_pt_event[mu_idx]>25:
+                gen_eta_unmatched_glob.append(gen_eta_event[mu_idx])
+
+        for mu_idx, KMTF_idx in enumerate(match_idx_KMTF_displaced):
+            if KMTF_idx is not None and gen_pt_event[mu_idx]>25:
+                gen_eta_KMTF_matched_displaced_glob.append(gen_eta_event[mu_idx])
+
+        for mu_idx, KMTF_idx in enumerate(match_idx_KMTF_prompt):
+            if KMTF_idx is not None and gen_pt_event[mu_idx]>25:
+                gen_eta_KMTF_matched_prompt_glob.append(gen_eta_event[mu_idx])
+
+        for mu_idx, SAMuons_idx in enumerate(match_idx_SAMuons_displaced):
+            if SAMuons_idx is not None and gen_pt_event[mu_idx]>25:
+                gen_eta_SAMuons_matched_displaced_glob.append(gen_eta_event[mu_idx])
+
+        for mu_idx, SAMuons_idx in enumerate(match_idx_SAMuons_prompt):
+            if SAMuons_idx is not None and gen_pt_event[mu_idx]>25:
+                gen_eta_SAMuons_matched_prompt_glob.append(gen_eta_event[mu_idx])
+
 #=====================================================================================================================
     print(f"successful event loop. events: {event_num}")
     return_dict={
@@ -202,7 +229,12 @@ def event_loop(event_num=100, conv_z=False, conv_k=False):
         "gen_pt_unmatched":gen_pt_unmatched_glob, 
         "gen_pt_KMTF_displaced_matched":gen_pt_KMTF_matched_displaced_glob, 
         "gen_pt_KMTF_prompt_matched":gen_pt_KMTF_matched_prompt_glob,
-        "gen_pt_SAMuons_displaced_matched":gen_pt_SAMuons_matched_displaced_glob, 
-        "gen_pt_SAMuons_prompt_matched":gen_pt_SAMuons_matched_prompt_glob
+        "gen_pt_SAMuons_displaced_matched":gen_pt_SAMuons_matched_displaced_glob,
+        "gen_pt_SAMuons_prompt_matched":gen_pt_SAMuons_matched_prompt_glob,
+        "gen_eta_unmatched":gen_eta_unmatched_glob,
+        "gen_eta_KMTF_displaced_matched":gen_eta_KMTF_matched_displaced_glob,
+        "gen_eta_KMTF_prompt_matched":gen_eta_KMTF_matched_prompt_glob,
+        "gen_eta_SAMuons_displaced_matched":gen_eta_SAMuons_matched_displaced_glob,
+        "gen_eta_SAMuons_prompt_matched":gen_eta_SAMuons_matched_prompt_glob
         }
     return return_dict
