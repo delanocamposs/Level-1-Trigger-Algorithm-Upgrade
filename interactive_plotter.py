@@ -403,7 +403,7 @@ def plot_deltak_vs_curv(data,st,show=True,xrange=(-7000,7000),yrange=(-20000,200
         ROOT.gROOT.SetBatch(True)
     direc=make_plot_dir("deltak_vs_curv")
     c=ROOT.TCanvas(f"c_dk_curv_{st}","",800,600)
-    h=ROOT.TH2F(f"h_dk_curv_{st}",f"(k_{{pred,{st}}}-k_{{meas,{st}}}) vs curvature;gen q/p_{{T}};#Delta k (k_{{pred,{st}}}-k_{{meas,{st}}})",xbins,xrange[0],xrange[1],ybins,yrange[0],yrange[1])
+    h=ROOT.TH2F(f"h_dk_curv_{st}",f"{st+1} -> {st}: (k_{{pred,{st}}}-k_{{meas,{st}}}) vs curvature;gen q/p_{{T}};#Delta k (k_{{pred,{st}}}-k_{{meas,{st}}})",xbins,xrange[0],xrange[1],ybins,yrange[0],yrange[1])
     h.SetDirectory(0)
     m={}
     if st==3:
@@ -418,6 +418,7 @@ def plot_deltak_vs_curv(data,st,show=True,xrange=(-7000,7000),yrange=(-20000,200
         k_pred=1*k0
         h.Fill(curv, k_pred-k_meas)
     h.SetStats(0)
+    c.SetLeftMargin(0.18)
     h.Draw("COLZ")
     store_plots["canvas"][f"deltak_vs_curv_{st}"]=c
     store_plots["histos"][f"deltak_vs_curv_{st}"]=h
@@ -432,12 +433,71 @@ def plot_deltak_vs_curv(data,st,show=True,xrange=(-7000,7000),yrange=(-20000,200
 
     return c,h 
 
+def plot_deltak_vs_curv_to_vtx(data,show=False,xrange=(-7000,7000),yrange=(-10000,10000), conv_k=False, conv_z=False,xbins=100,ybins=100):
+    st="vtx"
+    if not show:
+        ROOT.gROOT.SetBatch(True)
+    direc=make_plot_dir("deltak_vs_curv")
+    c=ROOT.TCanvas(f"c_dk_curv_{st}","",800,600)
+    h=ROOT.TH2F(f"h_dk_curv_{st}",f"1 -> vtx: (k_{{pred,{st}}}-k_{{gen,{st}}}) vs curvature;gen q/p_{{T}};#Delta k (k_{{pred,{st}}}-k_{{gen,{st}}})",xbins,xrange[0],xrange[1],ybins,yrange[0],yrange[1])
+    h.SetDirectory(0)
+    m={}
+    if conv_k!=conv_z:
+        raise ValueError("conv_k and conv_z must be the same. units need to be consistent")
+    for muid,curv1,slope1 in zip(data["mu_id"][1],data["gen_curv"][1],data["stub_k"][1]):
+        if muid not in m:
+            m[muid]=(curv1,slope1)
+    for muid,gen_eta in zip(data["mu_id"][1],data["gen_eta"][1]):
+        if muid not in m:
+            continue
+        curv1,slope1=m[muid]
+        k_pred=slope1
+        k_vtx=np.sinh(gen_eta)
+        if conv_k==False:
+            #if using digital units, convert back to digitized units since gen eta returns physical units from data dict
+            k_vtx=k_vtx*(65536.0/2.0)
+        else:
+            k_vtx=k_vtx
+        h.Fill(curv1,k_pred-k_vtx)
+    h.SetStats(0)
+    c.SetLeftMargin(0.18)
+    py=h.ProjectionY(f"py_dk_{st}")
+    mu=py.GetMean()
+    rms=py.GetRMS()
+    if rms>0:
+        h.GetYaxis().SetRangeUser(mu-6*rms,mu+6*rms)
+    h.Draw("COLZ")
+    store_plots["canvas"][f"deltak_vs_curv_{st}"]=c
+    store_plots["histos"][f"deltak_vs_curv_{st}"]=h
+    c.Update()
+    c.SaveAs(f"{direc}/deltak_vs_curv_{st}.png")
+    p=h.ProfileX()
+    p.SetStats(0)
+    p.SetLineWidth(2)
+    p.SetTitle(f"vtx <k_pred-k_gen> vs curvature (1 -> vtx);gen q/pT;<#Delta k>")
+    c2=ROOT.TCanvas(f"c_dkprof_curv_{st}","",900,700)
+    c2.SetLeftMargin(0.15)
+    p.Draw("E")
+    c2.Update()
+    c2.SaveAs(f"{direc}/dk_profile_vs_curv_{st}.png")
+    store_plots["canvas"][f"dkprof_vs_curv_{st}"]=c2
+    store_plots["profiles"][f"dkprof_vs_curv_{st}"]=p
+    print(f"histo name stored: deltak_vs_curv_{st}")
+    f=ROOT.TFile(f"deltak_vs_curv_{st}.root","UPDATE")
+    f.cd()
+    h.Write(h.GetName(),ROOT.TObject.kOverwrite)
+    c.Write(c.GetName(),ROOT.TObject.kOverwrite)
+    f.Close()
+    return c,c2,h,p
+
+
+
 def plot_deltaz_vs_curv(data,st,conv_k=False, conv_z=False,show=False,xrange=(-7000,7000),yrange=(-10000,10000),xbins=100,ybins=100):
     if not show:
         ROOT.gROOT.SetBatch(True)
     direc=make_plot_dir("deltaz_vs_curv")
     c=ROOT.TCanvas(f"c_dz_curv_{st}","",800,600)
-    h=ROOT.TH2F(f"h_dz_curv_{st}",f"(z_{{pred,{st}}}-z_{{meas,{st}}}) vs curvature;gen q/p_{{T}};#Delta z (z_{{pred,{st}}}-z_{{meas,{st}}})",xbins,xrange[0],xrange[1],ybins,yrange[0],yrange[1])
+    h=ROOT.TH2F(f"h_dz_curv_{st}",f"{st+1} -> {st}: (z_{{pred,{st}}}-z_{{meas,{st}}}) vs curvature;gen q/p_{{T}};#Delta z (z_{{pred,{st}}}-z_{{meas,{st}}})",xbins,xrange[0],xrange[1],ybins,yrange[0],yrange[1])
     h.SetDirectory(0)
     m={}
     if conv_k != conv_z:
@@ -478,7 +538,7 @@ def plot_deltaz_vs_curv(data,st,conv_k=False, conv_z=False,show=False,xrange=(-7
     p=h.ProfileX()
     p.SetStats(0)
     p.SetLineWidth(2)
-    p.SetTitle(f"station: {st} <z_pred-z_meas> vs curvature;gen q/pT;<#Delta z>")
+    p.SetTitle(f"{st+1} -> {st}: <z_pred-z_meas> vs curvature;gen q/pT;<#Delta z>")
     c2=ROOT.TCanvas(f"c_dzprof_curv_{st}","",900,700)
     c2.SetLeftMargin(0.15)
     p.Draw("E")
@@ -502,7 +562,7 @@ def plot_deltaz_vs_curv_to_vtx(data,show=False,xrange=(-7000,7000),yrange=(-1000
         ROOT.gROOT.SetBatch(True)
     direc=make_plot_dir("deltaz_vs_curv")
     c=ROOT.TCanvas(f"c_dz_curv_{st}","",800,600)
-    h=ROOT.TH2F(f"h_dz_curv_{st}",f"(z_{{pred,{st}}}-z_{{meas,{st}}}) vs curvature;gen q/p_{{T}};#Delta z (z_{{pred,{st}}}-z_{{meas,{st}}})",xbins,xrange[0],xrange[1],ybins,yrange[0],yrange[1])
+    h=ROOT.TH2F(f"h_dz_curv_{st}",f"1 -> vtx: (z_{{pred,{st}}}-z_{{meas,{st}}}) vs curvature;gen q/p_{{T}};#Delta z (z_{{pred,{st}}}-z_{{meas,{st}}})",xbins,xrange[0],xrange[1],ybins,yrange[0],yrange[1])
     h.SetDirectory(0)
     m={}
     if conv_k!=conv_z:
@@ -540,7 +600,7 @@ def plot_deltaz_vs_curv_to_vtx(data,show=False,xrange=(-7000,7000),yrange=(-1000
     p=h.ProfileX()
     p.SetStats(0)
     p.SetLineWidth(2)
-    p.SetTitle(f"station: {st} <z_pred-z_meas> vs curvature;gen q/pT;<#Delta z>")
+    p.SetTitle(f"{st+1} -> {st}: <z_pred-z_meas> vs curvature;gen q/pT;<#Delta z>")
     c2=ROOT.TCanvas(f"c_dzprof_curv_{st}","",900,700)
     c2.SetLeftMargin(0.15)
     p.Draw("E")
