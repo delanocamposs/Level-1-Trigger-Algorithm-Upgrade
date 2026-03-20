@@ -1,4 +1,5 @@
 import ROOT
+import glob
 from array import array 
 import numpy as np 
 from main import event_loop
@@ -6,6 +7,13 @@ from trigger_helpers import *
 import os 
 
 store_plots={"canvas":{}, "histos":{}, "fits":{}, "profiles":{}}
+
+
+def clear_old_slice_pngs(station, xvar, yvar):
+    direc=make_plot_dir(f"gaussianfit_slices_{yvar}_vs_{xvar}")
+    pattern=os.path.join(direc, f"slice{yvar}_vs_{xvar}_bin*_station_{station}.png")
+    for path in glob.glob(pattern):
+        os.remove(path)
 
 def plot_slice_and_gaussian(h2,xbin,st,xvar,xunit,yvar,yunit,min_entries=10,nsig=2,slice_xrange=None,slice_yrange=None):
     direc=make_plot_dir(f"gaussianfit_slices_{yvar}_vs_{xvar}")
@@ -17,7 +25,7 @@ def plot_slice_and_gaussian(h2,xbin,st,xvar,xunit,yvar,yunit,min_entries=10,nsig
     h_slice=h2.ProjectionY(slice_name,xbin,xbin)
     h_slice.SetDirectory(0)
     c=ROOT.TCanvas(f"c_{name}_xbin{xbin}","",800,600)
-    h_slice.SetTitle(f"Station {st}: {x_low:.1f}<{xvar}<{x_high:.1f} [{xunit}];{yvar} [{yunit}];Entries")
+    h_slice.SetTitle(f"Station {st}: {x_low:.1f}<{xvar}<{x_high:.1f} {xunit};{yvar} {yunit};Entries")
     h_slice.SetLineColor(ROOT.kBlack)
     h_slice.SetMarkerStyle(20)
     h_slice.SetMarkerSize(1.0)
@@ -140,9 +148,14 @@ def plot_yslices(data,station,key,xvar,xunit,yvar,yunit,rebinx=20,min_entries=10
     if rebinx and rebinx>1:
         h.RebinX(rebinx)
     direc=make_plot_dir(f"yslices_{yvar}_vs_{xvar}")
-    hx=ROOT.TH1F("h_sigma",f"Station {station};{xvar} [{xunit}];#sigma({yvar}) [{yunit}]",h.GetNbinsX(),h.GetXaxis().GetXmin(),h.GetXaxis().GetXmax())
+    if station=="vtx":
+        prop_info = "1 -> vtx"
+    else:
+        prop_info = f"{station+1} -> {station}"
+    hx=ROOT.TH1F("h_sigma",f"{prop_info}: Gaussian fit #sigma vs curv ;{xvar} [{xunit}];#sigma({yvar}) {yunit}",h.GetNbinsX(),h.GetXaxis().GetXmin(),h.GetXaxis().GetXmax())
     hx.SetDirectory(0)
-    hx.GetXaxis().SetTitle(h.GetXaxis().GetTitle() if h.GetXaxis().GetTitle() else f"{xvar} [{xunit}]")
+    hx.GetXaxis().SetTitle(h.GetXaxis().GetTitle() if h.GetXaxis().GetTitle() else f"{xvar} {xunit}")
+    clear_old_slice_pngs(station, xvar, yvar)
     for i in range(1,h.GetNbinsX()+1):
         c,h_slice,g,pars=plot_slice_and_gaussian(h,i,station,xvar,xunit,yvar,yunit,min_entries=min_entries,nsig=nsig,slice_xrange=slice_xrange,slice_yrange=slice_yrange)
         mu,mu_e,si,si_e,status=pars
@@ -202,9 +215,9 @@ def plot_yslices(data,station,key,xvar,xunit,yvar,yunit,rebinx=20,min_entries=10
     store_plots["fits"][f"yslices_sigma_fit_{key}_st{station}"]=f
     store_plots["fits"][f"yslices_sigma_fitres_{key}_st{station}"]=fitres
     c_sig.Update()
-    c_sig.SaveAs(f"{direc}/sigma_{yvar}_vs_{xvar}.png")
-    store_plots["canvas"]["yslices_sigma"]=c_sig
-    store_plots["histos"]["yslices_sigma"]=hx
+    c_sig.SaveAs(f"{direc}/sigma_{yvar}_vs_{xvar}_{station}.png")
+    store_plots["canvas"][f"yslices_sigma_{yvar}_vs_{xvar}_{station}"]=c_sig
+    store_plots["histos"][f"yslices_sigma_{yvar}_vs_{xvar}_{station}"]=hx
     print("all y slice plots saved.")
     return c_sig,hx
 
@@ -398,7 +411,7 @@ def plot_deltaz_vs_k1_to_vtx(data,conv_z=False, conv_k=False, xrange=(-50000,500
     store_plots["profiles"][f"dzprof_vs_k1_MB1_vtx"]=p
     return c1,c2,h,p
 
-def plot_deltak_vs_curv(data,st,show=True,xrange=(-7000,7000),yrange=(-20000,20000),xbins=100,ybins=100):
+def plot_deltak_vs_curv(data,st,show=False,xrange=(-7000,7000),yrange=(-20000,20000),xbins=100,ybins=100):
     if not show:
         ROOT.gROOT.SetBatch(True)
     direc=make_plot_dir("deltak_vs_curv")
