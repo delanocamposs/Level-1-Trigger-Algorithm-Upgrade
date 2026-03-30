@@ -771,5 +771,38 @@ def plot_eff_vs_eta_prompt_displaced(data,prompt_data,displaced_data,show=False,
     store_plots["histos"]["eff_displaced_kmtf"]=effD
     return c,effP,effD
 
-if __name__=="__main__":
-    data=event_loop(1000,False,False)
+def plot_overlay_prompt_displaced(prompt_data, displaced_data, show=False, n_bins=50, xrange=(-1500, 1500),title="Normalized KMTF Track z_{vtx};z_{vtx} [cm];a.u.", color_prompt=ROOT.kRed, color_displaced=ROOT.kBlue):
+    if not show:
+        ROOT.gROOT.SetBatch(True)
+    direc = make_plot_dir("kmtf_zvtx_distribution")
+    z_bins = tuple(np.linspace(xrange[0], xrange[1], n_bins + 1))
+    bins = array('d', z_bins)
+    hPrompt = ROOT.TH1D("hPrompt", title, n_bins, bins)
+    hDisp   = ROOT.TH1D("hDisp",   title, n_bins, bins)
+    hPrompt.SetDirectory(0); hDisp.SetDirectory(0)
+    for z in prompt_data["kmtf_zvtx"]:
+        hPrompt.Fill(float(z))
+    for z in displaced_data["kmtf_zvtx"]:
+        hDisp.Fill(float(z))
+    hPrompt.SetLineColor(color_prompt); hPrompt.SetMarkerColor(color_prompt); hPrompt.SetMarkerStyle(20)
+    hDisp.SetLineColor(color_displaced); hDisp.SetMarkerColor(color_displaced); hDisp.SetMarkerStyle(21)
+    if hPrompt.Integral()>0: hPrompt.Scale(1.0 / hPrompt.Integral())
+    if hDisp.Integral()> 0:hDisp.Scale(1.0 / hDisp.Integral())
+    c = ROOT.TCanvas("c_kmtf_zvtx", "", 800, 600)
+    y_max = max(hPrompt.GetMaximum(), hDisp.GetMaximum()) * 1.2
+    hPrompt.GetYaxis().SetRangeUser(0, y_max)
+    hPrompt.Draw("HIST")
+    hDisp.Draw("HIST SAME")
+    leg = ROOT.TLegend(0.60, 0.70, 0.88, 0.88)
+    leg.SetBorderSize(0); leg.SetFillStyle(0)
+    leg.AddEntry(hPrompt, "prompt DY","l")
+    leg.AddEntry(hDisp, "displaced", "l")
+    leg.Draw()
+    c.SaveAs(f"{direc}/kmtf_zvtx_prompt_displaced.png")
+    f = ROOT.TFile(f"{direc}/kmtf_zvtx_prompt_displaced.root", "RECREATE")
+    hPrompt.Write(); hDisp.Write(); c.Write(); f.Close()
+    store_plots["canvas"]["kmtf_zvtx_prompt_displaced"] = c
+    store_plots["histos"]["hPrompt_zvtx"] = hPrompt
+    store_plots["histos"]["hDisp_zvtx"]   = hDisp
+    return c, hPrompt, hDisp
+
