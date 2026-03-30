@@ -10,6 +10,7 @@ ROOT.FWLiteEnabler.enable()
 genhandle=Handle("vector<reco::GenParticle>")
 KMTFhandle=Handle("vector<l1t::SAMuon>")
 SAMuonshandle=Handle("vector<l1t::SAMuon>")
+Trackshandle=Handle("vector<l1t::KMTFTrack>")
 
 def eta_from_z(z_cm,R_cm):
     hyp=math.hypot(z_cm,R_cm)
@@ -172,6 +173,12 @@ def get_SAMuons_phPt(event, vertex, pt_min=0, pt_max=1000, eta_max=1.3):
 def get_SAMuons_phEta(event, vertex, pt_min=0, pt_max=1000, eta_max=1.3):
     event.getByLabel("l1tSAMuonsGmt",vertex,"L1P2GT", SAMuonshandle)
     val=[float(g.phEta()) for g in SAMuonshandle.product() if abs(g.phEta())<eta_max and pt_min<g.phPt()<pt_max]
+    return val
+
+def get_KMTFTack_zVtx(event):
+    event.getByLabel("l1tKMTFMuonsGmt", "kmtfTracks", "L1P2GT", Trackshandle)
+    z_lsb = 1500.0 / 65536.0
+    val = [float(g.zPosition()*z_lsb) for g in Trackshandle.product()]
     return val
 
 

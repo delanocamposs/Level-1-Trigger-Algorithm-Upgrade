@@ -1,4 +1,5 @@
 import math
+import re, os
 import numpy as np
 import ROOT
 import matplotlib.pyplot as plt
@@ -14,9 +15,37 @@ ZRES_CONV=65536.0/1500.0
 KRES_CONV=65536.0/2
 CURV_CONV=(1<<15)/1.25
 
-def event_loop(event_num=100, conv_z=False, conv_k=False):
+def event_loop(dataset, event_num, conv_z=False, conv_k=False):
     #events=Events("DY_Phase2_200_merged.root")
-    events=Events("output_DY_Phase2_L1T_all.root")
+    
+    dataset_path={
+        "prompt":"/eos/uscms/store/user/dacampos/L1KMTF/PromptDY_PU200/DYToLL_M-50_TuneCP5_14TeV-pythia8/PHASEII_PromptDY_PU200/260324_080705/0000/",
+        "displaced2-10":"/eos/uscms/store/user/dacampos/L1KMTF/DisplacedMu_Pt2To10_PU140/DisplacedMuons_Pt-2To10_Dxy-0To3000-gun/PHASEII_DisplacedMu_Pt2To10_PU140/260324_080742/0000/",
+        "displaced10-30":"/eos/uscms/store/user/dacampos/L1KMTF/DisplacedMu_Pt10To30_PU140/DisplacedMuons_Pt-10To30_Dxy-0To3000-gun/PHASEII_DisplacedMu_Pt10To30_PU140/260324_080802/0000/",
+        "displaced30-100":"/eos/uscms/store/user/dacampos/L1KMTF/DisplacedMu_Pt30To100_PU140/DisplacedMuons_Pt-30To100_Dxy-0To3000-gun/PHASEII_DisplacedMu_Pt30To100_PU140/260324_080823/0000/",
+        "minbias":"/eos/uscms/store/user/dacampos/L1KMTF/MinBias_PU200/MinBias_TuneCP5_14TeV-pythia8/PHASEII_MinBias_PU200/260324_081247/"}
+    file_format={
+        "prompt":r'^output_Phase2_L1T_(\d+)\.root$',
+        "displaced2-10":r'^output_Phase2_L1T_(\d+)\.root$',
+        "displaced10-30":r'^output_Phase2_L1T_(\d+)\.root$',
+        "displaced30-100":r'^output_Phase2_L1T_(\d+)\.root$',
+        "minbias":r'^output_Phase2_L1T_MinBias_(\d+)\.root$'}
+    EOS_DIR=dataset_path[dataset]
+    pattern = re.compile(file_format[dataset])
+    def is_good(filepath):
+        try:
+            f = ROOT.TFile.Open(filepath)
+            if not f or f.IsZombie() or f.TestBit(ROOT.TFile.kRecovered) or f.GetNkeys() == 0:
+                return False
+            f.Close()
+            return True
+        except Exception:
+            return False
+    all_files = sorted([os.path.join(EOS_DIR, f) for f in os.listdir(EOS_DIR) if pattern.match(f)],key=lambda f: int(pattern.match(os.path.basename(f)).group(1)))
+    good_files = [f for f in all_files if is_good(f)]
+    print(f"Using {len(good_files)} files")
+
+    events=Events(good_files)
     thetahandle=Handle("L1Phase2MuDTThContainer")
     genhandle=Handle("vector<reco::GenParticle>")
     KMTFhandle=Handle("vector<l1t::SAMuon>")
@@ -40,6 +69,7 @@ def event_loop(event_num=100, conv_z=False, conv_k=False):
     gen_eta_KMTF_matched_prompt_glob=[]
     gen_eta_SAMuons_matched_displaced_glob=[]
     gen_eta_SAMuons_matched_prompt_glob=[]
+    kmtf_zvtx_glob = []
 
     for i, event in enumerate(events):
         if i>=event_num:
@@ -149,6 +179,8 @@ def event_loop(event_num=100, conv_z=False, conv_k=False):
             mu_id_glob[st].extend(np.array(mu_id_by_st[st])) 
 
 
+        kmtf_zvtx_event = get_KMTF_zVtx(event, pt_min=0, eta_max=0.83)
+        kmtf_zvtx_glob.extend(kmtf_zvtx_event)
         #this loop will attempt to match genmuons to KMTF muons if eta<0.83 and pT>20GeV. used for efficiency plot. 
         #this piece of the code is used to return information about efficiency vs pT in "===================".
         #putting it at the end since it uses different collection (l1tKMTFGmt vs L1Phase2MuDTThContainer). both studies use genParticles however.
@@ -235,6 +267,7 @@ def event_loop(event_num=100, conv_z=False, conv_k=False):
         "gen_eta_KMTF_displaced_matched":gen_eta_KMTF_matched_displaced_glob,
         "gen_eta_KMTF_prompt_matched":gen_eta_KMTF_matched_prompt_glob,
         "gen_eta_SAMuons_displaced_matched":gen_eta_SAMuons_matched_displaced_glob,
-        "gen_eta_SAMuons_prompt_matched":gen_eta_SAMuons_matched_prompt_glob
+        "gen_eta_SAMuons_prompt_matched":gen_eta_SAMuons_matched_prompt_glob,
+        "kmtf_zvtx": kmtf_zvtx_glob
         }
     return return_dict
