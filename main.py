@@ -179,7 +179,7 @@ def event_loop(dataset, event_num, conv_z=False, conv_k=False):
             mu_id_glob[st].extend(np.array(mu_id_by_st[st])) 
 
 
-        kmtf_zvtx_event = get_KMTF_zVtx(event, pt_min=0, eta_max=0.83)
+        kmtf_zvtx_event = get_KMTFTrack_zVtx(event)
         kmtf_zvtx_glob.extend(kmtf_zvtx_event)
         #this loop will attempt to match genmuons to KMTF muons if eta<0.83 and pT>20GeV. used for efficiency plot. 
         #this piece of the code is used to return information about efficiency vs pT in "===================".
