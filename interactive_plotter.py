@@ -771,38 +771,66 @@ def plot_eff_vs_eta_prompt_displaced(data,prompt_data,displaced_data,show=False,
     store_plots["histos"]["eff_displaced_kmtf"]=effD
     return c,effP,effD
 
-def plot_overlay_prompt_displaced(prompt_data, displaced_data, show=False, n_bins=50, xrange=(-1500, 1500),title="Normalized KMTF Track z_{vtx};z_{vtx} [cm];a.u.", color_prompt=ROOT.kRed, color_displaced=ROOT.kBlue):
+_zvtx_call_count = 0
+def plot_overlay_prompt_displaced(prompt_data, displaced_data1,displaced_data2=None,displaced_data3=None, show=False, n_bins=50, xrange=(-1500, 1500),title="Normalized KMTF Track z_{vtx};z_{vtx} [cm];a.u.",color_prompt=ROOT.kRed, color_displaced=ROOT.kBlue):
+    global _zvtx_call_count
+    _zvtx_call_count += 1
+    suf = _zvtx_call_count
     if not show:
         ROOT.gROOT.SetBatch(True)
     direc = make_plot_dir("kmtf_zvtx_distribution")
     z_bins = tuple(np.linspace(xrange[0], xrange[1], n_bins + 1))
     bins = array('d', z_bins)
-    hPrompt = ROOT.TH1D("hPrompt", title, n_bins, bins)
-    hDisp   = ROOT.TH1D("hDisp",   title, n_bins, bins)
+    hPrompt = ROOT.TH1D(f"hPrompt_{suf}", title, n_bins, bins)
+    hDisp = ROOT.TH1D(f"hDisp_{suf}",   title, n_bins, bins)
     hPrompt.SetDirectory(0); hDisp.SetDirectory(0)
     for z in prompt_data["kmtf_zvtx"]:
         hPrompt.Fill(float(z))
-    for z in displaced_data["kmtf_zvtx"]:
+    for z in displaced_data1["kmtf_zvtx"]:
         hDisp.Fill(float(z))
-    hPrompt.SetLineColor(color_prompt); hPrompt.SetMarkerColor(color_prompt); hPrompt.SetMarkerStyle(20)
+    if displaced_data2 is not None:
+        for z in displaced_data2["kmtf_zvtx"]:
+            hDisp.Fill(float(z))
+    if displaced_data3 is not None:
+        for z in displaced_data3["kmtf_zvtx"]:
+            hDisp.Fill(float(z))
+    hPrompt.SetLineColor(color_prompt);  hPrompt.SetMarkerColor(color_prompt);  hPrompt.SetMarkerStyle(20)
     hDisp.SetLineColor(color_displaced); hDisp.SetMarkerColor(color_displaced); hDisp.SetMarkerStyle(21)
-    if hPrompt.Integral()>0: hPrompt.Scale(1.0 / hPrompt.Integral())
-    if hDisp.Integral()> 0:hDisp.Scale(1.0 / hDisp.Integral())
-    c = ROOT.TCanvas("c_kmtf_zvtx", "", 800, 600)
-    y_max = max(hPrompt.GetMaximum(), hDisp.GetMaximum()) * 1.2
+    if hPrompt.Integral() > 0: hPrompt.Scale(1.0 / hPrompt.Integral())
+    if hDisp.Integral()> 0: hDisp.Scale(1.0 / hDisp.Integral())
+    hPrompt.SetStats(0)
+    hDisp.SetStats(0)
+    gP = ROOT.TF1(f"gP_{suf}", "gaus", xrange[0], xrange[1])
+    gD = ROOT.TF1(f"gD_{suf}", "gaus", xrange[0], xrange[1])
+    gP.SetLineColor(color_prompt);  gP.SetLineWidth(2); gP.SetLineStyle(2)
+    gD.SetLineColor(color_displaced); gD.SetLineWidth(2); gD.SetLineStyle(2)
+    hPrompt.Fit(gP, "RQ")
+    hDisp.Fit(gD, "RQ")
+    c = ROOT.TCanvas(f"c_kmtf_zvtx_{suf}", "", 800, 600)
+    y_max = max(hPrompt.GetMaximum(), hDisp.GetMaximum()) * 1.4
     hPrompt.GetYaxis().SetRangeUser(0, y_max)
     hPrompt.Draw("HIST")
     hDisp.Draw("HIST SAME")
-    leg = ROOT.TLegend(0.60, 0.70, 0.88, 0.88)
+    #gP.Draw("SAME")
+    #gD.Draw("SAME")
+    leg = ROOT.TLegend(0.58, 0.62, 0.89, 0.88)
     leg.SetBorderSize(0); leg.SetFillStyle(0)
-    leg.AddEntry(hPrompt, "prompt DY","l")
-    leg.AddEntry(hDisp, "displaced", "l")
+    leg.SetTextSize(0.030)
+    leg.AddEntry(hPrompt, "prompt DY", "l")
+    #leg.AddEntry(gP, f"#sigma={gP.GetParameter(2):.1f} cm", "l")
+    leg.AddEntry(hDisp,"displaced", "l")
+    #leg.AddEntry(gD, f"#sigma={gD.GetParameter(2):.1f} cm", "l")
     leg.Draw()
+    print("sigma", gP.GetParameter(2))
     c.SaveAs(f"{direc}/kmtf_zvtx_prompt_displaced.png")
     f = ROOT.TFile(f"{direc}/kmtf_zvtx_prompt_displaced.root", "RECREATE")
-    hPrompt.Write(); hDisp.Write(); c.Write(); f.Close()
-    store_plots["canvas"]["kmtf_zvtx_prompt_displaced"] = c
-    store_plots["histos"]["hPrompt_zvtx"] = hPrompt
-    store_plots["histos"]["hDisp_zvtx"]   = hDisp
-    return c, hPrompt, hDisp
+    hPrompt.Write(); hDisp.Write(); gP.Write(); gD.Write(); c.Write(); f.Close()
+    store_plots["canvas"][f"kmtf_zvtx_prompt_displaced_{suf}"] = c
+    store_plots["histos"][f"hPrompt_zvtx_{suf}"] = hPrompt
+    store_plots["histos"][f"hDisp_zvtx_{suf}"] = hDisp
+    store_plots["histos"][f"leg_zvtx_{suf}"] = leg
+    store_plots["fits"][f"gP_zvtx_{suf}"] = gP
+    store_plots["fits"][f"gD_zvtx_{suf}"]= gD
+    return c, hPrompt, hDisp, gP, gD
+
 
