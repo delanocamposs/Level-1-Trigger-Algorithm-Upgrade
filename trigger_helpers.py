@@ -100,7 +100,36 @@ def match_indices_global(listA,listB,max_diff=0.3):
         usedA.add(i)
         usedB.add(j)
     return match_idx
-    
+
+def match_indices_global_tracks(gen_eta, gen_phi, track_eta, track_phi, max_dr=0.6):
+    n_gen=len(gen_phi)
+    n_trk=len(track_phi)
+    match_idx=[None]*n_gen
+    if n_gen==0 or n_trk==0:
+        return match_idx
+    if len(gen_eta)!=n_gen:
+        raise ValueError("len(gen_eta) must equal len(gen_phi).")
+    if len(track_eta)!=n_trk:
+        raise ValueError("len(track_eta) must equal len(track_phi).")
+    pairs=[]
+    for i,(eta_gen,phi_gen) in enumerate(zip(gen_eta,gen_phi)):
+        for j,(eta_trk,phi_trk) in enumerate(zip(track_eta,track_phi)):
+            dphi=abs(np.arctan2(np.sin(phi_gen-phi_trk), np.cos(phi_gen-phi_trk)))
+            deta=abs(eta_gen-eta_trk)
+            dr=np.hypot(deta,dphi)
+            if dr>max_dr:
+                continue
+            pairs.append((dr,i,j))
+    pairs.sort(key=lambda x:x[0])
+    used_gen=set()
+    used_trk=set()
+    for d,i,j in pairs:
+        if i in used_gen or j in used_trk:
+            continue
+        match_idx[i]=j
+        used_gen.add(i)
+        used_trk.add(j)
+    return match_idx
 
 def get_gen_muons_eta(event,pt_min=0,pt_max=1000,eta_max=1.3):
     event.getByLabel("genParticles", genhandle)
@@ -150,6 +179,11 @@ def get_gen_muons_curv(event,pt_min=0,pt_max=1000,eta_max=1.3):
     val=[float((g.charge())/(g.pt())) for g in genhandle.product() if abs(g.pdgId())==13 and g.status()==1 and abs(g.eta())<eta_max and pt_min<g.pt()<pt_max]
     return val
 
+def get_gen_muons_phi(event,pt_min=0,pt_max=1000,eta_max=1.3):
+    event.getByLabel("genParticles", genhandle)
+    val=[float(g.phi()) for g in genhandle.product() if abs(g.pdgId()) == 13 and g.status() == 1 and abs(g.eta())<eta_max and pt_min<g.pt()<pt_max]
+    return val
+
 def make_plot_dir(name):
     outdir = os.path.join("plot_images", name)
     os.makedirs(outdir, exist_ok=True)
@@ -180,6 +214,19 @@ def get_KMTFTrack_zVtx(event):
     z_lsb = 1500.0 / 65536.0
     val = [float(g.zPosition()*z_lsb) for g in Trackshandle.product()]
     return val
+
+def get_KMTFTrack_eta(event):
+    event.getByLabel("l1tKMTFMuonsGmt", "kmtfTracks", "L1P2GT", Trackshandle)
+    val = [float(g.eta()) for g in Trackshandle.product()]
+    return val
+
+def get_KMTFTrack_phi(event):
+    event.getByLabel("l1tKMTFMuonsGmt", "kmtfTracks", "L1P2GT", Trackshandle)
+    val = [float(g.phi()) for g in Trackshandle.product()]
+    return val
+
+
+
 
 
 
