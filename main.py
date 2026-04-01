@@ -76,6 +76,7 @@ def event_loop(dataset, event_num, thetaDigi,conv_z=False, conv_k=False):
     gen_vz_KMTFTracks_matched_glob=[]
     kmtf_eta_KMTFTracks_matched_glob=[]
     gen_eta_KMTFTracks_allmatched_glob=[]
+    kmtf_kslope_KMTFTracks_matched_glob=[]
 
     for i, event in enumerate(events):
         if i>=event_num:
@@ -197,6 +198,7 @@ def event_loop(dataset, event_num, thetaDigi,conv_z=False, conv_k=False):
         KMTFTrack_eta_event=get_KMTFTrack_eta(event, thetaDigi)
         KMTFTrack_phi_event=get_KMTFTrack_phi(event, thetaDigi)
         KMTFTrack_zvtx_event=get_KMTFTrack_zVtx(event, thetaDigi)
+        KMTFTrack_kslope_event=get_KMTFTrack_kSlope(event, thetaDigi)
         gen_pt_KMTFTracks_matched_event=[]
         KMTF_phEta_displaced_event=get_KMTF_muons_phEta(event, "displaced",pt_min=20,eta_max=0.83)
         KMTF_phEta_prompt_event=get_KMTF_muons_phEta(event, "prompt",pt_min=20,eta_max=0.83)
@@ -224,6 +226,7 @@ def event_loop(dataset, event_num, thetaDigi,conv_z=False, conv_k=False):
                 kmtf_zvtx_KMTFTracks_matched_glob.append(KMTFTrack_zvtx_event[KMTFTrack_idx])
                 gen_vz_KMTFTracks_matched_glob.append(gen_vz_event[mu_idx])
                 kmtf_eta_KMTFTracks_matched_glob.append(KMTFTrack_eta_event[KMTFTrack_idx])
+                kmtf_kslope_KMTFTracks_matched_glob.append(KMTFTrack_kslope_event[KMTFTrack_idx])
                 gen_eta_KMTFTracks_allmatched_glob.append(gen_eta_event[mu_idx])
         gen_pt_KMTFTracks_matched_glob.extend(gen_pt_KMTFTracks_matched_event)
 
@@ -301,6 +304,7 @@ def event_loop(dataset, event_num, thetaDigi,conv_z=False, conv_k=False):
         "kmtf_zvtx_KMTFTracks_matched":kmtf_zvtx_KMTFTracks_matched_glob,
         "gen_vz_KMTFTracks_matched":gen_vz_KMTFTracks_matched_glob,
         "kmtf_eta_KMTFTracks_matched":kmtf_eta_KMTFTracks_matched_glob,
-        "gen_eta_KMTFTracks_allmatched":gen_eta_KMTFTracks_allmatched_glob
+        "gen_eta_KMTFTracks_allmatched":gen_eta_KMTFTracks_allmatched_glob,
+        "kmtf_kslope_KMTFTracks_matched":kmtf_kslope_KMTFTracks_matched_glob
         }
     return return_dict

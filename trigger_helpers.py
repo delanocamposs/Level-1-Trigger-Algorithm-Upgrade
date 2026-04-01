@@ -211,11 +211,10 @@ def get_SAMuons_phEta(event, vertex, pt_min=0, pt_max=1000, eta_max=1.3):
 
 def get_KMTFTrack_zVtx(event, thetaDigi=True):
     event.getByLabel("l1tKMTFMuonsGmt", "kmtfTracks", "L1P2GT", Trackshandle)
-    z_lsb = 1500.0 / 65536.0
     tracks = Trackshandle.product()
     if thetaDigi:
         tracks = [g for g in tracks if any(s.etaQuality() > 0 for s in g.stubs())]
-    val = [float(g.zPosition()) * z_lsb for g in tracks]
+    val = [float(g.zPosition()) for g in tracks]
     return val
 
 def get_KMTFTrack_eta(event, thetaDigi=True):
@@ -232,6 +231,14 @@ def get_KMTFTrack_phi(event, thetaDigi=True):
     if thetaDigi:
         tracks = [g for g in tracks if any(s.etaQuality() > 0 for s in g.stubs())]
     val = [float(g.phi()) for g in tracks]
+    return val
+
+def get_KMTFTrack_kSlope(event, thetaDigi=True):
+    event.getByLabel("l1tKMTFMuonsGmt", "kmtfTracks", "L1P2GT", Trackshandle)
+    tracks = Trackshandle.product()
+    if thetaDigi:
+        tracks = [g for g in tracks if any(s.etaQuality() > 0 for s in g.stubs())]
+    val = [float(g.kSlope()) for g in tracks]
     return val
 
 

@@ -924,3 +924,36 @@ def plot_etatrack_minus_etagen(data,show=False,showFit=True,fitColor=ROOT.kRed,n
     c.SaveAs(f"{direc}/{out_name}.png")
     return c,h,deta
 
+def plot_etagen_vs_kslope(data, k_phys, eta_phys,show=False,xbins=120,ybins=120,xrange=(-7000,7000),yrange=(-1.2,1.2),title="#eta_{gen} vs kSlope_{track};kSlope_{track};#eta_{gen}",out_name="etagen_vs_kslope_2d"):
+    global _simple_plot_call_count
+    _simple_plot_call_count += 1
+    kslope_vals=data["kmtf_kslope_KMTFTracks_matched"]
+    etagen_vals=data["gen_eta_KMTFTracks_allmatched"]
+    if len(kslope_vals)!=len(etagen_vals):
+        raise ValueError("kslope_vals and etagen_vals must have the same length for event-by-event plotting.")
+    if not show:
+        ROOT.gROOT.SetBatch(True)
+    direc=make_plot_dir("etagen_vs_kslope")
+    uniq=f"{out_name}_{_simple_plot_call_count}"
+    c=ROOT.TCanvas(f"c_{uniq}","",850,700)
+    c.SetLeftMargin(0.14)
+    h=ROOT.TH2F(f"h_{uniq}",title,xbins,xrange[0],xrange[1],ybins,yrange[0],yrange[1])
+    h.SetDirectory(0)
+    for ks,eta in zip(kslope_vals,etagen_vals):
+        if k_phys:
+            k_LSB = 2.0/65536.0
+            ks = ks*k_LSB
+        if not eta_phys:
+            eta_LSB = (2*np.pi)/(2**13)
+            eta =eta/eta_LSB
+        h.Fill(float(ks),float(eta))
+    h.SetStats(0)
+    h.Draw("COLZ")
+    store_plots["canvas"][out_name]=c
+    store_plots["histos"][out_name]=h
+    store_plots["canvas"][uniq]=c
+    store_plots["histos"][uniq]=h
+    c.Update()
+    c.SaveAs(f"{direc}/{uniq}.png")
+    return c,h
+
