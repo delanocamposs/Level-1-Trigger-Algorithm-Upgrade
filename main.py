@@ -15,7 +15,7 @@ ZRES_CONV=65536.0/1500.0
 KRES_CONV=65536.0/2
 CURV_CONV=(1<<15)/1.25
 
-def event_loop(dataset, event_num, conv_z=False, conv_k=False):
+def event_loop(dataset, event_num, thetaDigi,conv_z=False, conv_k=False):
     #events=Events("DY_Phase2_200_merged.root")
     
     dataset_path={
@@ -74,6 +74,8 @@ def event_loop(dataset, event_num, conv_z=False, conv_k=False):
     kmtf_zvtx_glob = []
     kmtf_zvtx_KMTFTracks_matched_glob=[]
     gen_vz_KMTFTracks_matched_glob=[]
+    kmtf_eta_KMTFTracks_matched_glob=[]
+    gen_eta_KMTFTracks_allmatched_glob=[]
 
     for i, event in enumerate(events):
         if i>=event_num:
@@ -184,7 +186,7 @@ def event_loop(dataset, event_num, conv_z=False, conv_k=False):
             mu_id_glob[st].extend(np.array(mu_id_by_st[st])) 
 
 
-        kmtf_zvtx_event = get_KMTFTrack_zVtx(event)
+        kmtf_zvtx_event = get_KMTFTrack_zVtx(event, thetaDigi)
         kmtf_zvtx_glob.extend(kmtf_zvtx_event)
         #this loop will attempt to match genmuons to KMTF muons if eta<0.83 and pT>20GeV. used for efficiency plot. 
         #this piece of the code is used to return information about efficiency vs pT in "===================".
@@ -192,9 +194,9 @@ def event_loop(dataset, event_num, conv_z=False, conv_k=False):
 #=====================================================================================================================
         gen_pt_unmatched_glob.extend(np.array(gen_pt_event)) #add unmatched gen muon pt to global array WITHOUT 20 GEV PT CUT! denom of efficiency curve. 
 
-        KMTFTrack_eta_event=get_KMTFTrack_eta(event)
-        KMTFTrack_phi_event=get_KMTFTrack_phi(event)
-        KMTFTrack_zvtx_event=get_KMTFTrack_zVtx(event)
+        KMTFTrack_eta_event=get_KMTFTrack_eta(event, thetaDigi)
+        KMTFTrack_phi_event=get_KMTFTrack_phi(event, thetaDigi)
+        KMTFTrack_zvtx_event=get_KMTFTrack_zVtx(event, thetaDigi)
         gen_pt_KMTFTracks_matched_event=[]
         KMTF_phEta_displaced_event=get_KMTF_muons_phEta(event, "displaced",pt_min=20,eta_max=0.83)
         KMTF_phEta_prompt_event=get_KMTF_muons_phEta(event, "prompt",pt_min=20,eta_max=0.83)
@@ -221,6 +223,8 @@ def event_loop(dataset, event_num, conv_z=False, conv_k=False):
                 gen_pt_KMTFTracks_matched_event.append(gen_pt_event[mu_idx])
                 kmtf_zvtx_KMTFTracks_matched_glob.append(KMTFTrack_zvtx_event[KMTFTrack_idx])
                 gen_vz_KMTFTracks_matched_glob.append(gen_vz_event[mu_idx])
+                kmtf_eta_KMTFTracks_matched_glob.append(KMTFTrack_eta_event[KMTFTrack_idx])
+                gen_eta_KMTFTracks_allmatched_glob.append(gen_eta_event[mu_idx])
         gen_pt_KMTFTracks_matched_glob.extend(gen_pt_KMTFTracks_matched_event)
 
         for mu_idx, KMTF_idx in enumerate(match_idx_KMTF_displaced):
@@ -295,6 +299,8 @@ def event_loop(dataset, event_num, conv_z=False, conv_k=False):
         "gen_eta_SAMuons_prompt_matched":gen_eta_SAMuons_matched_prompt_glob,
         "kmtf_zvtx": kmtf_zvtx_glob,
         "kmtf_zvtx_KMTFTracks_matched":kmtf_zvtx_KMTFTracks_matched_glob,
-        "gen_vz_KMTFTracks_matched":gen_vz_KMTFTracks_matched_glob
+        "gen_vz_KMTFTracks_matched":gen_vz_KMTFTracks_matched_glob,
+        "kmtf_eta_KMTFTracks_matched":kmtf_eta_KMTFTracks_matched_glob,
+        "gen_eta_KMTFTracks_allmatched":gen_eta_KMTFTracks_allmatched_glob
         }
     return return_dict

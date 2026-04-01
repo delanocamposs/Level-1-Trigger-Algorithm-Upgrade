@@ -833,7 +833,10 @@ def plot_overlay_prompt_displaced(prompt_data, displaced_data1,displaced_data2=N
     store_plots["fits"][f"gD_zvtx_{suf}"]= gD
     return c, hPrompt, hDisp, gP, gD
 
-def plot_ztrack_minus_zgen(data,show=False,nbins=100,xrange=(-300,300),title="z_{track}-z_{gen};z_{track}-z_{gen} (cm);Entries",out_name="ztrack_minus_zgen_1d"):
+_simple_plot_call_count = 0
+def plot_ztrack_minus_zgen(data,show=False,showFit=True,fitColor=ROOT.kRed,nbins=100,xrange=(-300,300),title="z_{track}-z_{gen};z_{track}-z_{gen} (cm);Entries",out_name="ztrack_minus_zgen_1d"):
+    global _simple_plot_call_count
+    _simple_plot_call_count += 1
     ztrack_vals=data["kmtf_zvtx_KMTFTracks_matched"]
     zgen_vals=data["gen_vz_KMTFTracks_matched"]
     if not show:
@@ -841,8 +844,9 @@ def plot_ztrack_minus_zgen(data,show=False,nbins=100,xrange=(-300,300),title="z_
     if len(ztrack_vals)!=len(zgen_vals):
         raise ValueError("ztrack_vals and zgen_vals must have the same length for event-by-event subtraction.")
     direc=make_plot_dir("ztrack_minus_zgen")
-    c=ROOT.TCanvas(f"c_{out_name}","",800,600)
-    h=ROOT.TH1F(f"h_{out_name}",title,nbins,xrange[0],xrange[1])
+    uniq=f"{out_name}_{_simple_plot_call_count}"
+    c=ROOT.TCanvas(f"c_{uniq}","",800,600)
+    h=ROOT.TH1F(f"h_{uniq}",title,nbins,xrange[0],xrange[1])
     h.SetDirectory(0)
     dz=np.array(ztrack_vals,dtype=float)-np.array(zgen_vals,dtype=float)
     for val in dz:
@@ -850,8 +854,73 @@ def plot_ztrack_minus_zgen(data,show=False,nbins=100,xrange=(-300,300),title="z_
     h.SetStats(0)
     h.SetLineWidth(2)
     h.Draw("HIST")
+    fit=None
+    leg=None
+    if showFit:
+        fit=ROOT.TF1(f"fit_{uniq}","gaus",xrange[0],xrange[1])
+        fit.SetLineColor(fitColor)
+        fit.SetLineWidth(2)
+        h.Fit(fit,"RQS")
+        fit.Draw("SAME")
+        sigma=fit.GetParameter(2)
+        sigma_err=fit.GetParError(2)
+        leg=ROOT.TLegend(0.62,0.80,0.88,0.88)
+        leg.SetBorderSize(0)
+        leg.SetFillStyle(0)
+        leg.AddEntry(0,f"#sigma = {sigma:.3g} #pm {sigma_err:.2g}","")
+        leg.Draw()
     store_plots["canvas"][out_name]=c
     store_plots["histos"][out_name]=h
+    if fit is not None:
+        store_plots["fits"][out_name]=fit
+    if leg is not None:
+        store_plots["histos"][f"{out_name}_legend"]=leg
     c.Update()
     c.SaveAs(f"{direc}/{out_name}.png")
     return c,h,dz
+
+def plot_etatrack_minus_etagen(data,show=False,showFit=True,fitColor=ROOT.kRed,nbins=120,xrange=(-1.2,1.2),title="#eta_{track}-#eta_{gen};#eta_{track}-#eta_{gen};Entries",out_name="etatrack_minus_etagen_1d"):
+    global _simple_plot_call_count
+    _simple_plot_call_count += 1
+    etatrack_vals=data["kmtf_eta_KMTFTracks_matched"]
+    etagen_vals=data["gen_eta_KMTFTracks_allmatched"]
+    if not show:
+        ROOT.gROOT.SetBatch(True)
+    if len(etatrack_vals)!=len(etagen_vals):
+        raise ValueError("etatrack_vals and etagen_vals must have the same length for event-by-event subtraction.")
+    direc=make_plot_dir("etatrack_minus_etagen")
+    uniq=f"{out_name}_{_simple_plot_call_count}"
+    c=ROOT.TCanvas(f"c_{uniq}","",800,600)
+    h=ROOT.TH1F(f"h_{uniq}",title,nbins,xrange[0],xrange[1])
+    h.SetDirectory(0)
+    deta=np.array(etatrack_vals,dtype=float)-np.array(etagen_vals,dtype=float)
+    for val in deta:
+        h.Fill(float(val))
+    h.SetStats(0)
+    h.SetLineWidth(2)
+    h.Draw("HIST")
+    fit=None
+    leg=None
+    if showFit:
+        fit=ROOT.TF1(f"fit_{uniq}","gaus",xrange[0],xrange[1])
+        fit.SetLineColor(fitColor)
+        fit.SetLineWidth(2)
+        h.Fit(fit,"RQS")
+        fit.Draw("SAME")
+        sigma=fit.GetParameter(2)
+        sigma_err=fit.GetParError(2)
+        leg=ROOT.TLegend(0.62,0.80,0.88,0.88)
+        leg.SetBorderSize(0)
+        leg.SetFillStyle(0)
+        leg.AddEntry(0,f"#sigma = {sigma:.3g} #pm {sigma_err:.2g}","")
+        leg.Draw()
+    store_plots["canvas"][out_name]=c
+    store_plots["histos"][out_name]=h
+    if fit is not None:
+        store_plots["fits"][out_name]=fit
+    if leg is not None:
+        store_plots["histos"][f"{out_name}_legend"]=leg
+    c.Update()
+    c.SaveAs(f"{direc}/{out_name}.png")
+    return c,h,deta
+
