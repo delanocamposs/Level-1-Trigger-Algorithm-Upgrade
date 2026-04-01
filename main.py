@@ -59,17 +59,21 @@ def event_loop(dataset, event_num, conv_z=False, conv_k=False):
     #global arrays outside event loop for KMTF muon information.
     #adding unmatched pt dictionary. this means gen muon pt straight from gen particles without any matching algo to stubs. no station split because genparticles doesnt know about stations.
     gen_pt_unmatched_glob=[]
+    gen_pt_KMTFTracks_matched_glob=[]
     gen_pt_KMTF_matched_displaced_glob=[]
     gen_pt_KMTF_matched_prompt_glob=[]
     gen_pt_SAMuons_matched_displaced_glob=[]
     gen_pt_SAMuons_matched_prompt_glob=[]
 
     gen_eta_unmatched_glob=[]
+    gen_eta_KMTFTracks_matched_glob=[]
     gen_eta_KMTF_matched_displaced_glob=[]
     gen_eta_KMTF_matched_prompt_glob=[]
     gen_eta_SAMuons_matched_displaced_glob=[]
     gen_eta_SAMuons_matched_prompt_glob=[]
     kmtf_zvtx_glob = []
+    kmtf_zvtx_KMTFTracks_matched_glob=[]
+    gen_vz_KMTFTracks_matched_glob=[]
 
     for i, event in enumerate(events):
         if i>=event_num:
@@ -83,6 +87,7 @@ def event_loop(dataset, event_num, conv_z=False, conv_k=False):
         #also save a gen_z_event which is station-dependent. filled later based on matching (genParticles has no z information - must build the z).
         gen_pt_event=get_gen_muons_pt(event,pt_min=0,pt_max=1000,eta_max=0.83)
         gen_eta_event=get_gen_muons_eta(event,pt_min=0,pt_max=1000,eta_max=0.83)
+        gen_phi_event=get_gen_muons_phi(event,pt_min=0,pt_max=1000,eta_max=0.83)
         gen_vz_event=get_gen_muons_vz(event,pt_min=0,pt_max=1000,eta_max=0.83)
         gen_vy_event=get_gen_muons_vy(event,pt_min=0,pt_max=1000,eta_max=0.83)
         gen_vx_event=get_gen_muons_vx(event,pt_min=0,pt_max=1000,eta_max=0.83)
@@ -187,6 +192,10 @@ def event_loop(dataset, event_num, conv_z=False, conv_k=False):
 #=====================================================================================================================
         gen_pt_unmatched_glob.extend(np.array(gen_pt_event)) #add unmatched gen muon pt to global array WITHOUT 20 GEV PT CUT! denom of efficiency curve. 
 
+        KMTFTrack_eta_event=get_KMTFTrack_eta(event)
+        KMTFTrack_phi_event=get_KMTFTrack_phi(event)
+        KMTFTrack_zvtx_event=get_KMTFTrack_zVtx(event)
+        gen_pt_KMTFTracks_matched_event=[]
         KMTF_phEta_displaced_event=get_KMTF_muons_phEta(event, "displaced",pt_min=20,eta_max=0.83)
         KMTF_phEta_prompt_event=get_KMTF_muons_phEta(event, "prompt",pt_min=20,eta_max=0.83)
         gen_pt_KMTF_matched_displaced_event=[]
@@ -197,12 +206,22 @@ def event_loop(dataset, event_num, conv_z=False, conv_k=False):
         gen_pt_SAMuons_matched_displaced_event=[]
         gen_pt_SAMuons_matched_prompt_event=[]
 
-        #match all gen muons in acceptance to pT>20 KMTF muons
+        #match all gen muons in acceptance to KMTF tracks by global deltaR.
+        #IMPORTANT: this is additive to (not a replacement for) the legacy
+        #KMTF/SAMuons eta-based matching blocks below.
+        match_idx_KMTFTracks=match_indices_global_tracks(gen_eta_event, gen_phi_event, KMTFTrack_eta_event, KMTFTrack_phi_event, max_dr=0.6)
         match_idx_KMTF_displaced=match_indices_global(gen_eta_event, KMTF_phEta_displaced_event)
         match_idx_KMTF_prompt=match_indices_global(gen_eta_event, KMTF_phEta_prompt_event)
 
         match_idx_SAMuons_displaced=match_indices_global(gen_eta_event, SAMuons_phEta_displaced_event)
         match_idx_SAMuons_prompt=match_indices_global(gen_eta_event, SAMuons_phEta_prompt_event)
+
+        for mu_idx, KMTFTrack_idx in enumerate(match_idx_KMTFTracks):
+            if KMTFTrack_idx is not None:
+                gen_pt_KMTFTracks_matched_event.append(gen_pt_event[mu_idx])
+                kmtf_zvtx_KMTFTracks_matched_glob.append(KMTFTrack_zvtx_event[KMTFTrack_idx])
+                gen_vz_KMTFTracks_matched_glob.append(gen_vz_event[mu_idx])
+        gen_pt_KMTFTracks_matched_glob.extend(gen_pt_KMTFTracks_matched_event)
 
         for mu_idx, KMTF_idx in enumerate(match_idx_KMTF_displaced):
             if KMTF_idx is not None:
@@ -227,6 +246,10 @@ def event_loop(dataset, event_num, conv_z=False, conv_k=False):
         for mu_idx in range(len(gen_pt_event)):
             if gen_pt_event[mu_idx]>25:
                 gen_eta_unmatched_glob.append(gen_eta_event[mu_idx])
+
+        for mu_idx, KMTFTrack_idx in enumerate(match_idx_KMTFTracks):
+            if KMTFTrack_idx is not None and gen_pt_event[mu_idx]>25:
+                gen_eta_KMTFTracks_matched_glob.append(gen_eta_event[mu_idx])
 
         for mu_idx, KMTF_idx in enumerate(match_idx_KMTF_displaced):
             if KMTF_idx is not None and gen_pt_event[mu_idx]>25:
@@ -259,15 +282,19 @@ def event_loop(dataset, event_num, conv_z=False, conv_k=False):
         "mu_id":mu_id_glob, 
         "gen_curv":gen_curv_glob, 
         "gen_pt_unmatched":gen_pt_unmatched_glob, 
+        "gen_pt_KMTFTracks_matched":gen_pt_KMTFTracks_matched_glob,
         "gen_pt_KMTF_displaced_matched":gen_pt_KMTF_matched_displaced_glob, 
         "gen_pt_KMTF_prompt_matched":gen_pt_KMTF_matched_prompt_glob,
         "gen_pt_SAMuons_displaced_matched":gen_pt_SAMuons_matched_displaced_glob,
         "gen_pt_SAMuons_prompt_matched":gen_pt_SAMuons_matched_prompt_glob,
         "gen_eta_unmatched":gen_eta_unmatched_glob,
+        "gen_eta_KMTFTracks_matched":gen_eta_KMTFTracks_matched_glob,
         "gen_eta_KMTF_displaced_matched":gen_eta_KMTF_matched_displaced_glob,
         "gen_eta_KMTF_prompt_matched":gen_eta_KMTF_matched_prompt_glob,
         "gen_eta_SAMuons_displaced_matched":gen_eta_SAMuons_matched_displaced_glob,
         "gen_eta_SAMuons_prompt_matched":gen_eta_SAMuons_matched_prompt_glob,
-        "kmtf_zvtx": kmtf_zvtx_glob
+        "kmtf_zvtx": kmtf_zvtx_glob,
+        "kmtf_zvtx_KMTFTracks_matched":kmtf_zvtx_KMTFTracks_matched_glob,
+        "gen_vz_KMTFTracks_matched":gen_vz_KMTFTracks_matched_glob
         }
     return return_dict

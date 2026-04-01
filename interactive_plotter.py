@@ -833,4 +833,25 @@ def plot_overlay_prompt_displaced(prompt_data, displaced_data1,displaced_data2=N
     store_plots["fits"][f"gD_zvtx_{suf}"]= gD
     return c, hPrompt, hDisp, gP, gD
 
-
+def plot_ztrack_minus_zgen(data,show=False,nbins=100,xrange=(-300,300),title="z_{track}-z_{gen};z_{track}-z_{gen} (cm);Entries",out_name="ztrack_minus_zgen_1d"):
+    ztrack_vals=data["kmtf_zvtx_KMTFTracks_matched"]
+    zgen_vals=data["gen_vz_KMTFTracks_matched"]
+    if not show:
+        ROOT.gROOT.SetBatch(True)
+    if len(ztrack_vals)!=len(zgen_vals):
+        raise ValueError("ztrack_vals and zgen_vals must have the same length for event-by-event subtraction.")
+    direc=make_plot_dir("ztrack_minus_zgen")
+    c=ROOT.TCanvas(f"c_{out_name}","",800,600)
+    h=ROOT.TH1F(f"h_{out_name}",title,nbins,xrange[0],xrange[1])
+    h.SetDirectory(0)
+    dz=np.array(ztrack_vals,dtype=float)-np.array(zgen_vals,dtype=float)
+    for val in dz:
+        h.Fill(float(val))
+    h.SetStats(0)
+    h.SetLineWidth(2)
+    h.Draw("HIST")
+    store_plots["canvas"][out_name]=c
+    store_plots["histos"][out_name]=h
+    c.Update()
+    c.SaveAs(f"{direc}/{out_name}.png")
+    return c,h,dz
