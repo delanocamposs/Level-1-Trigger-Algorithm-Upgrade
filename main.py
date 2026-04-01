@@ -15,7 +15,7 @@ ZRES_CONV=65536.0/1500.0
 KRES_CONV=65536.0/2
 CURV_CONV=(1<<15)/1.25
 
-def event_loop(dataset, event_num, thetaDigi,conv_z=False, conv_k=False):
+def event_loop(dataset, event_num, thetaDigi,eta_max,conv_z=False, conv_k=False):
     #events=Events("DY_Phase2_200_merged.root")
     
     dataset_path={
@@ -88,14 +88,14 @@ def event_loop(dataset, event_num, thetaDigi,conv_z=False, conv_k=False):
     
         #grab vector of gen muon pT, eta, vz,vy,vx, etc per event
         #also save a gen_z_event which is station-dependent. filled later based on matching (genParticles has no z information - must build the z).
-        gen_pt_event=get_gen_muons_pt(event,pt_min=0,pt_max=1000,eta_max=0.83)
-        gen_eta_event=get_gen_muons_eta(event,pt_min=0,pt_max=1000,eta_max=0.83)
-        gen_phi_event=get_gen_muons_phi(event,pt_min=0,pt_max=1000,eta_max=0.83)
-        gen_vz_event=get_gen_muons_vz(event,pt_min=0,pt_max=1000,eta_max=0.83)
-        gen_vy_event=get_gen_muons_vy(event,pt_min=0,pt_max=1000,eta_max=0.83)
-        gen_vx_event=get_gen_muons_vx(event,pt_min=0,pt_max=1000,eta_max=0.83)
+        gen_pt_event=get_gen_muons_pt(event,pt_min=0,pt_max=1000,eta_max=eta_max)
+        gen_eta_event=get_gen_muons_eta(event,pt_min=0,pt_max=1000,eta_max=eta_max)
+        gen_phi_event=get_gen_muons_phi(event,pt_min=0,pt_max=1000,eta_max=eta_max)
+        gen_vz_event=get_gen_muons_vz(event,pt_min=0,pt_max=1000,eta_max=eta_max)
+        gen_vy_event=get_gen_muons_vy(event,pt_min=0,pt_max=1000,eta_max=eta_max)
+        gen_vx_event=get_gen_muons_vx(event,pt_min=0,pt_max=1000,eta_max=eta_max)
         gen_vr_event=np.sqrt((np.array(gen_vx_event))**2+(np.array(gen_vy_event))**2)
-        gen_curv_event=get_gen_muons_curv(event, pt_min=0, pt_max=1000,eta_max=0.83)
+        gen_curv_event=get_gen_muons_curv(event, pt_min=0, pt_max=1000,eta_max=eta_max)
     
         if len(gen_pt_event)!=len(gen_eta_event):
             print("ERROR: size mismatch")
@@ -189,7 +189,7 @@ def event_loop(dataset, event_num, thetaDigi,conv_z=False, conv_k=False):
 
         kmtf_zvtx_event = get_KMTFTrack_zVtx(event, thetaDigi)
         kmtf_zvtx_glob.extend(kmtf_zvtx_event)
-        #this loop will attempt to match genmuons to KMTF muons if eta<0.83 and pT>20GeV. used for efficiency plot. 
+        #this loop will attempt to match genmuons to KMTF muons if eta<eta_max and pT>20GeV. used for efficiency plot. 
         #this piece of the code is used to return information about efficiency vs pT in "===================".
         #putting it at the end since it uses different collection (l1tKMTFGmt vs L1Phase2MuDTThContainer). both studies use genParticles however.
 #=====================================================================================================================
@@ -200,13 +200,13 @@ def event_loop(dataset, event_num, thetaDigi,conv_z=False, conv_k=False):
         KMTFTrack_zvtx_event=get_KMTFTrack_zVtx(event, thetaDigi)
         KMTFTrack_kslope_event=get_KMTFTrack_kSlope(event, thetaDigi)
         gen_pt_KMTFTracks_matched_event=[]
-        KMTF_phEta_displaced_event=get_KMTF_muons_phEta(event, "displaced",pt_min=20,eta_max=0.83)
-        KMTF_phEta_prompt_event=get_KMTF_muons_phEta(event, "prompt",pt_min=20,eta_max=0.83)
+        KMTF_phEta_displaced_event=get_KMTF_muons_phEta(event, "displaced",pt_min=20,eta_max=eta_max)
+        KMTF_phEta_prompt_event=get_KMTF_muons_phEta(event, "prompt",pt_min=20,eta_max=eta_max)
         gen_pt_KMTF_matched_displaced_event=[]
         gen_pt_KMTF_matched_prompt_event=[]
 
-        SAMuons_phEta_displaced_event=get_SAMuons_phEta(event, "displaced",pt_min=20,eta_max=0.83)
-        SAMuons_phEta_prompt_event=get_SAMuons_phEta(event, "prompt",pt_min=20,eta_max=0.83)
+        SAMuons_phEta_displaced_event=get_SAMuons_phEta(event, "displaced",pt_min=20,eta_max=eta_max)
+        SAMuons_phEta_prompt_event=get_SAMuons_phEta(event, "prompt",pt_min=20,eta_max=eta_max)
         gen_pt_SAMuons_matched_displaced_event=[]
         gen_pt_SAMuons_matched_prompt_event=[]
 
