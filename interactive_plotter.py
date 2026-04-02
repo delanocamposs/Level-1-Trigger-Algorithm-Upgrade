@@ -924,7 +924,7 @@ def plot_etatrack_minus_etagen(data,show=False,showFit=True,fitColor=ROOT.kRed,n
     c.SaveAs(f"{direc}/{out_name}.png")
     return c,h,deta
 
-def plot_etagen_vs_kslope(data, k_phys, eta_phys,show=False,xbins=120,ybins=120,xrange=(-7000,7000),yrange=(-1.2,1.2),title="#eta_{gen} vs kSlope_{track};kSlope_{track};#eta_{gen}",out_name="etagen_vs_kslope_2d"):
+def plot_etagen_vs_kslope(data, k_phys, eta_phys,show=False,xbins=120,ybins=120,xrange=(-65536,65536),yrange=(-1600,1600),title="#eta_{gen} vs kSlope_{track};kSlope_{track};#eta_{gen}",profile_title="profile: #eta_{gen} vs kSlope_{track};kSlope_{track};< #eta_{gen} >",out_name="etagen_vs_kslope_2d", ytitle_offset_2d=1.05, ytitle_offset_profile=1.35):
     global _simple_plot_call_count
     _simple_plot_call_count += 1
     kslope_vals=data["kmtf_kslope_KMTFTracks_matched"]
@@ -939,6 +939,7 @@ def plot_etagen_vs_kslope(data, k_phys, eta_phys,show=False,xbins=120,ybins=120,
     c.SetLeftMargin(0.14)
     h=ROOT.TH2F(f"h_{uniq}",title,xbins,xrange[0],xrange[1],ybins,yrange[0],yrange[1])
     h.SetDirectory(0)
+    h.GetYaxis().SetTitleOffset(ytitle_offset_2d)
     for ks,eta in zip(kslope_vals,etagen_vals):
         if k_phys:
             k_LSB = 2.0/65536.0
@@ -955,5 +956,47 @@ def plot_etagen_vs_kslope(data, k_phys, eta_phys,show=False,xbins=120,ybins=120,
     store_plots["histos"][uniq]=h
     c.Update()
     c.SaveAs(f"{direc}/{uniq}.png")
-    return c,h
 
+    p=h.ProfileX(f"p_{uniq}")
+    p.SetDirectory(0)
+    p.SetTitle(profile_title)
+    p.SetStats(0)
+    p.SetLineWidth(2)
+    c_prof=ROOT.TCanvas(f"cprof_{uniq}","",850,700)
+    c_prof.SetLeftMargin(0.14)
+    p.GetYaxis().SetTitleOffset(ytitle_offset_profile)
+    p.GetYaxis().SetRangeUser(yrange[0],yrange[1])
+    p.Draw("E")
+
+    f_lin=ROOT.TF1(f"f_lin_{uniq}", "pol1", xrange[0], xrange[1])
+    f_lin.SetLineColor(ROOT.kRed+1)
+    f_lin.SetLineWidth(2)
+    fitres=p.Fit(f_lin, "RQS")
+    f_lin.Draw("SAME")
+    p0=f_lin.GetParameter(0)
+    p1=f_lin.GetParameter(1)
+    p0e=f_lin.GetParError(0)
+    p1e=f_lin.GetParError(1)
+
+    leg=ROOT.TLegend(0.12,0.74,0.58,0.90)
+    leg.SetBorderSize(0)
+    leg.SetFillStyle(0)
+    leg.SetTextSize(0.03)
+    leg.AddEntry(f_lin,"< #eta_{gen} > = p0 + p1 #upoint kSlope_{track}","l")
+    leg.AddEntry(0,f"p0 = {p0:.4g} #pm {p0e:.2g}","")
+    leg.AddEntry(0,f"p1 = {p1:.4g} #pm {p1e:.2g}","")
+    leg.Draw()
+
+    c_prof.Update()
+    c_prof.SaveAs(f"{direc}/{uniq}_profile.png")
+    store_plots["canvas"][f"{out_name}_profile"]=c_prof
+    store_plots["profiles"][f"{out_name}_profile"]=p
+    store_plots["fits"][f"{out_name}_profile_fit"]=f_lin
+    store_plots["fits"][f"{out_name}_profile_fitres"]=fitres
+    store_plots["histos"][f"{out_name}_profile_legend"]=leg
+    store_plots["canvas"][f"{uniq}_profile"]=c_prof
+    store_plots["profiles"][f"{uniq}_profile"]=p
+    store_plots["fits"][f"{uniq}_profile_fit"]=f_lin
+    store_plots["fits"][f"{uniq}_profile_fitres"]=fitres
+    store_plots["histos"][f"{uniq}_profile_legend"]=leg
+    return c,h,c_prof,p,f_lin,fitres
