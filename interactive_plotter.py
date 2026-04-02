@@ -978,7 +978,7 @@ def plot_etagen_vs_kslope(data, k_phys, eta_phys,show=False,xbins=120,ybins=120,
     p0e=f_lin.GetParError(0)
     p1e=f_lin.GetParError(1)
 
-    leg=ROOT.TLegend(0.12,0.74,0.58,0.90)
+    leg=ROOT.TLegend(0.18,0.74,0.64,0.90)
     leg.SetBorderSize(0)
     leg.SetFillStyle(0)
     leg.SetTextSize(0.03)
