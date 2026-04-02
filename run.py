@@ -5,6 +5,7 @@
 # with command line options: -s L1,L1P2GT --conditions auto:phase2_realistic_T35 --geometry ExtendedRun4D121 --era Phase2C17I13M9 --eventcontent FEVTDEBUGHLT --datatier GEN-SIM-DIGI-RAW-MINIAOD --customise SLHCUpgradeSimulations/Configuration/aging.customise_aging_1000,Configuration/DataProcessing/Utils.addMonitoring,L1Trigger/Configuration/customisePhase2.addHcalTriggerPrimitives --filein /store/mc/Phase2Spring24DIGIRECOMiniAOD/DYToLL_M-50_TuneCP5_14TeV-pythia8/GEN-SIM-DIGI-RAW-MINIAOD/PU200_Trk1GeV_140X_mcRun4_realistic_v4-v1/2810000/5bed6cad-6cdb-4a5e-87af-08cc8c8e0ff8.root --fileout file:output_Phase2_L1T.root --python_filename rerunL1_cfg.py '--inputCommands=keep *, drop l1tPFJets_*_*_*, drop l1tTrackerMuons_l1tTkMuonsGmt*_*_HLT' --mc -n 10 --nThreads 1
 import FWCore.ParameterSet.Config as cms
 
+
 from Configuration.Eras.Era_Phase2C17I13M9_cff import Phase2C17I13M9
 
 process = cms.Process('L1P2GT',Phase2C17I13M9)
@@ -24,14 +25,14 @@ process.load('Configuration.StandardSequences.EndOfProcess_cff')
 process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
 
 process.maxEvents = cms.untracked.PSet(
-    input = cms.untracked.int32(50),
+    input = cms.untracked.int32(-1),
     output = cms.optional.untracked.allowed(cms.int32,cms.PSet)
 )
 
 # Input source
 process.source = cms.Source("PoolSource",
     dropDescendantsOfDroppedBranches = cms.untracked.bool(False),
-    fileNames = cms.untracked.vstring('/store/mc/Phase2Spring24DIGIRECOMiniAOD/DYToLL_M-50_TuneCP5_14TeV-pythia8/GEN-SIM-DIGI-RAW-MINIAOD/PU200_Trk1GeV_140X_mcRun4_realistic_v4-v1/2810000/5bed6cad-6cdb-4a5e-87af-08cc8c8e0ff8.root'),
+    fileNames = cms.untracked.vstring('/store/mc/Phase2Spring24DIGIRECOMiniAOD/DisplacedMuons_Pt-30To100_Dxy-0To3000-gun/GEN-SIM-DIGI-RAW-MINIAOD/PU140_Trk1GeV_140X_mcRun4_realistic_v4-v1/2830000/16b0f6bc-65d4-4d4e-a0a8-9b0cb03a4634.root'),
     inputCommands = cms.untracked.vstring(
         'keep *',
         'drop l1tPFJets_*_*_*',
@@ -79,7 +80,22 @@ process.configurationMetadata = cms.untracked.PSet(
     version = cms.untracked.string('$Revision: 1.19 $')
 )
 
-# Output definition
+process.FEVTDEBUGHLTEventContent.outputCommands=cms.untracked.vstring(
+    'drop *',
+    'keep *_simDtTriggerPrimitiveDigis_*_*',
+    "keep *_dtTriggerPhase2PrimitivePairDigis_*_*",
+    'keep *_genParticles_*_*',
+    'keep *_dtTriggerPhase2PrimitiveDigis_*_*',
+    "keep *_simMuonDTDigis_*_*",
+    "keep *_gmtStubs_*_*",
+    "keep *_gmtKMTFMuons_*_*",
+    "keep *_l1tSAMuonsGmt_*_*",
+    "keep *_l1tKMTFMuonsGmt_*_*",
+    "keep *_l1tStubsGmt_*_*",
+    "keep *_simBmtfDigis_*_*",
+    "keep *_dtTriggerPhase2PrimitivePairDigis_*_*",
+    "keep *_simCscTriggerPrimitiveDigis_*_*",
+    "keep *_simMuonRPCDigis_*_*")
 process.FEVTDEBUGHLToutput = cms.OutputModule("PoolOutputModule",
     dataset = cms.untracked.PSet(
         dataTier = cms.untracked.string('GEN-SIM-DIGI-RAW-MINIAOD'),

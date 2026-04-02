@@ -33,6 +33,7 @@ process.maxEvents = cms.untracked.PSet(
 process.source = cms.Source("PoolSource",
     dropDescendantsOfDroppedBranches = cms.untracked.bool(False),
     fileNames = cms.untracked.vstring('file:output_Phase2_L1T.root'),
+    #eventsToProcess = cms.untracked.VEventRange('1:972051-1:972051'),
     inputCommands = cms.untracked.vstring(
         'keep *'
     ),
