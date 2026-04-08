@@ -25,15 +25,18 @@ process.load('L1Trigger.Phase2L1GMT.gmtKMTFMuons_cfi')
 process.load('L1Trigger.Phase2L1GMT.gmtStubs_cfi')
 
 process.maxEvents = cms.untracked.PSet(
-    input = cms.untracked.int32(50),
+    input = cms.untracked.int32(100000),
     output = cms.optional.untracked.allowed(cms.int32,cms.PSet)
 )
 
 # Input source
+import os
+eos_dir = '/eos/uscms/store/user/dacampos/L1KMTF/PromptDY_PU200/DYToLL_M-50_TuneCP5_14TeV-pythia8/PHASEII_PromptDY_PU200/260324_080705/0000'
+dy_files = ['file:' + os.path.join(eos_dir, f) for f in sorted(os.listdir(eos_dir)) if f.endswith('.root')]
+
 process.source = cms.Source("PoolSource",
     dropDescendantsOfDroppedBranches = cms.untracked.bool(False),
-    fileNames = cms.untracked.vstring('file:output_Phase2_L1T.root'),
-    #eventsToProcess = cms.untracked.VEventRange('1:972051-1:972051'),
+    fileNames = cms.untracked.vstring(dy_files),
     inputCommands = cms.untracked.vstring(
         'keep *'
     ),

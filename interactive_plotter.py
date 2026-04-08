@@ -879,7 +879,7 @@ def plot_ztrack_minus_zgen(data,show=False,showFit=True,fitColor=ROOT.kRed,nbins
     c.SaveAs(f"{direc}/{out_name}.png")
     return c,h,dz
 
-def plot_etatrack_minus_etagen(data,show=False,showFit=True,fitColor=ROOT.kRed,nbins=120,xrange=(-1.2,1.2),title="#eta_{track}-#eta_{gen};#eta_{track}-#eta_{gen};Entries",out_name="etatrack_minus_etagen_1d"):
+def plot_etatrack_minus_etagen(data,show=False,showFit=True,fitColor=ROOT.kRed,nbins=120,xrange=(-1.2,1.2),title="#eta_{track}-#eta_{gen};#eta_{track}-#eta_{gen};Entries",out_name="etatrack_minus_etagen_1d",overlay_out_name=None,overlay_title="#eta_{track} and #eta_{gen} distributions;#eta;Entries"):
     global _simple_plot_call_count
     _simple_plot_call_count += 1
     etatrack_vals=data["kmtf_eta_KMTFTracks_matched"]
@@ -912,6 +912,8 @@ def plot_etatrack_minus_etagen(data,show=False,showFit=True,fitColor=ROOT.kRed,n
         leg=ROOT.TLegend(0.62,0.80,0.88,0.88)
         leg.SetBorderSize(0)
         leg.SetFillStyle(0)
+        leg.SetTextSize(0.035)
+        leg.AddEntry(fit, f"Gaussian fit", "L")
         leg.AddEntry(0,f"#sigma = {sigma:.3g} #pm {sigma_err:.2g}","")
         leg.Draw()
     store_plots["canvas"][out_name]=c
@@ -922,6 +924,41 @@ def plot_etatrack_minus_etagen(data,show=False,showFit=True,fitColor=ROOT.kRed,n
         store_plots["histos"][f"{out_name}_legend"]=leg
     c.Update()
     c.SaveAs(f"{direc}/{out_name}.png")
+
+    if overlay_out_name is None:
+        overlay_out_name=f"{out_name}_track_vs_gen"
+    uniq_overlay=f"{overlay_out_name}_{_simple_plot_call_count}"
+    c_overlay=ROOT.TCanvas(f"c_{uniq_overlay}","",800,600)
+    h_etatrack=ROOT.TH1F(f"h_etatrack_{uniq_overlay}",overlay_title,nbins,xrange[0],xrange[1])
+    h_etagen=ROOT.TH1F(f"h_etagen_{uniq_overlay}",overlay_title,nbins,xrange[0],xrange[1])
+    h_etatrack.SetDirectory(0)
+    h_etagen.SetDirectory(0)
+    for val in etatrack_vals:
+        h_etatrack.Fill(float(val))
+    for val in etagen_vals:
+        h_etagen.Fill(float(val))
+    h_etatrack.SetStats(0)
+    h_etagen.SetStats(0)
+    h_etatrack.SetLineWidth(2)
+    h_etagen.SetLineWidth(2)
+    h_etatrack.SetLineColor(ROOT.kBlue+1)
+    h_etagen.SetLineColor(ROOT.kOrange+7)
+    max_y=max(h_etatrack.GetMaximum(),h_etagen.GetMaximum())
+    h_etatrack.SetMaximum(1.15*max_y if max_y>0 else 1.0)
+    h_etatrack.Draw("HIST")
+    h_etagen.Draw("HIST SAME")
+    leg_overlay=ROOT.TLegend(0.62,0.78,0.88,0.88)
+    leg_overlay.SetBorderSize(0)
+    leg_overlay.SetFillStyle(0)
+    leg_overlay.AddEntry(h_etatrack,"#eta_{track}","l")
+    leg_overlay.AddEntry(h_etagen,"#eta_{gen}","l")
+    leg_overlay.Draw()
+    store_plots["canvas"][overlay_out_name]=c_overlay
+    store_plots["histos"][f"{overlay_out_name}_etatrack"]=h_etatrack
+    store_plots["histos"][f"{overlay_out_name}_etagen"]=h_etagen
+    store_plots["histos"][f"{overlay_out_name}_legend"]=leg_overlay
+    c_overlay.Update()
+    c_overlay.SaveAs(f"{direc}/{overlay_out_name}.png")
     return c,h,deta
 
 def plot_etagen_vs_kslope(data, k_phys, eta_phys,show=False,xbins=120,ybins=120,xrange=(-65536,65536),yrange=(-1600,1600),title="#eta_{gen} vs kSlope_{track};kSlope_{track};#eta_{gen}",profile_title="profile: #eta_{gen} vs kSlope_{track};kSlope_{track};< #eta_{gen} >",out_name="etagen_vs_kslope_2d", ytitle_offset_2d=1.05, ytitle_offset_profile=1.35):

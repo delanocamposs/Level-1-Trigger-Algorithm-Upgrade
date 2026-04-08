@@ -15,37 +15,38 @@ ZRES_CONV=65536.0/1500.0
 KRES_CONV=65536.0/2
 CURV_CONV=(1<<15)/1.25
 
-def event_loop(dataset, event_num, thetaDigi,eta_max,conv_z=False, conv_k=False):
+def event_loop(event_num, thetaDigi, eta_max, eos_dataset=None,conv_z=False, conv_k=False):
     #events=Events("DY_Phase2_200_merged.root")
-    
-    dataset_path={
+    if eos_dataset is not None:
+        dataset_path={
         "prompt":"/eos/uscms/store/user/dacampos/L1KMTF/PromptDY_PU200/DYToLL_M-50_TuneCP5_14TeV-pythia8/PHASEII_PromptDY_PU200/260324_080705/0000/",
         "displaced2-10":"/eos/uscms/store/user/dacampos/L1KMTF/DisplacedMu_Pt2To10_PU140/DisplacedMuons_Pt-2To10_Dxy-0To3000-gun/PHASEII_DisplacedMu_Pt2To10_PU140/260324_080742/0000/",
         "displaced10-30":"/eos/uscms/store/user/dacampos/L1KMTF/DisplacedMu_Pt10To30_PU140/DisplacedMuons_Pt-10To30_Dxy-0To3000-gun/PHASEII_DisplacedMu_Pt10To30_PU140/260324_080802/0000/",
         "displaced30-100":"/eos/uscms/store/user/dacampos/L1KMTF/DisplacedMu_Pt30To100_PU140/DisplacedMuons_Pt-30To100_Dxy-0To3000-gun/PHASEII_DisplacedMu_Pt30To100_PU140/260324_080823/0000/",
         "minbias":"/eos/uscms/store/user/dacampos/L1KMTF/MinBias_PU200/MinBias_TuneCP5_14TeV-pythia8/PHASEII_MinBias_PU200/260324_081247/"}
-    file_format={
+        file_format={
         "prompt":r'^output_Phase2_L1T_(\d+)\.root$',
         "displaced2-10":r'^output_Phase2_L1T_(\d+)\.root$',
         "displaced10-30":r'^output_Phase2_L1T_(\d+)\.root$',
         "displaced30-100":r'^output_Phase2_L1T_(\d+)\.root$',
         "minbias":r'^output_Phase2_L1T_MinBias_(\d+)\.root$'}
-    EOS_DIR=dataset_path[dataset]
-    pattern = re.compile(file_format[dataset])
-    def is_good(filepath):
-        try:
-            f = ROOT.TFile.Open(filepath)
-            if not f or f.IsZombie() or f.TestBit(ROOT.TFile.kRecovered) or f.GetNkeys() == 0:
+        EOS_DIR=dataset_path[eos_dataset]
+        pattern = re.compile(file_format[eos_dataset])
+        def is_good(filepath):
+            try:
+                f = ROOT.TFile.Open(filepath)
+                if not f or f.IsZombie() or f.TestBit(ROOT.TFile.kRecovered) or f.GetNkeys() == 0:
+                    return False
+                f.Close()
+                return True
+            except Exception:
                 return False
-            f.Close()
-            return True
-        except Exception:
-            return False
-    all_files = sorted([os.path.join(EOS_DIR, f) for f in os.listdir(EOS_DIR) if pattern.match(f)],key=lambda f: int(pattern.match(os.path.basename(f)).group(1)))
-    good_files = [f for f in all_files if is_good(f)]
-    print(f"Using {len(good_files)} files")
-
-    events=Events(good_files)
+        all_files = sorted([os.path.join(EOS_DIR, f) for f in os.listdir(EOS_DIR) if pattern.match(f)],key=lambda f: int(pattern.match(os.path.basename(f)).group(1)))
+        good_files = [f for f in all_files if is_good(f)]
+        print(f"Using {len(good_files)} files")
+        events=Events(good_files)
+    else:
+        events=Events("output_DY_Phase2_L1T_KMTF_linearEta.root")
     thetahandle=Handle("L1Phase2MuDTThContainer")
     genhandle=Handle("vector<reco::GenParticle>")
     KMTFhandle=Handle("vector<l1t::SAMuon>")
@@ -88,14 +89,14 @@ def event_loop(dataset, event_num, thetaDigi,eta_max,conv_z=False, conv_k=False)
     
         #grab vector of gen muon pT, eta, vz,vy,vx, etc per event
         #also save a gen_z_event which is station-dependent. filled later based on matching (genParticles has no z information - must build the z).
-        gen_pt_event=get_gen_muons_pt(event,pt_min=0,pt_max=1000,eta_max=eta_max)
-        gen_eta_event=get_gen_muons_eta(event,pt_min=0,pt_max=1000,eta_max=eta_max)
-        gen_phi_event=get_gen_muons_phi(event,pt_min=0,pt_max=1000,eta_max=eta_max)
-        gen_vz_event=get_gen_muons_vz(event,pt_min=0,pt_max=1000,eta_max=eta_max)
-        gen_vy_event=get_gen_muons_vy(event,pt_min=0,pt_max=1000,eta_max=eta_max)
-        gen_vx_event=get_gen_muons_vx(event,pt_min=0,pt_max=1000,eta_max=eta_max)
+        gen_pt_event=get_gen_muons_pt(event,pt_min=10,pt_max=1000,eta_max=eta_max)
+        gen_eta_event=get_gen_muons_eta(event,pt_min=10,pt_max=1000,eta_max=eta_max)
+        gen_phi_event=get_gen_muons_phi(event,pt_min=10,pt_max=1000,eta_max=eta_max)
+        gen_vz_event=get_gen_muons_vz(event,pt_min=10,pt_max=1000,eta_max=eta_max)
+        gen_vy_event=get_gen_muons_vy(event,pt_min=10,pt_max=1000,eta_max=eta_max)
+        gen_vx_event=get_gen_muons_vx(event,pt_min=10,pt_max=1000,eta_max=eta_max)
         gen_vr_event=np.sqrt((np.array(gen_vx_event))**2+(np.array(gen_vy_event))**2)
-        gen_curv_event=get_gen_muons_curv(event, pt_min=0, pt_max=1000,eta_max=eta_max)
+        gen_curv_event=get_gen_muons_curv(event, pt_min=10, pt_max=1000,eta_max=eta_max)
     
         if len(gen_pt_event)!=len(gen_eta_event):
             print("ERROR: size mismatch")
@@ -187,7 +188,7 @@ def event_loop(dataset, event_num, thetaDigi,eta_max,conv_z=False, conv_k=False)
             mu_id_glob[st].extend(np.array(mu_id_by_st[st])) 
 
 
-        kmtf_zvtx_event = get_KMTFTrack_zVtx(event, thetaDigi)
+        kmtf_zvtx_event = get_KMTFTrack_zVtx(event, thetaDigi, pt_min=10,eta_max=eta_max)
         kmtf_zvtx_glob.extend(kmtf_zvtx_event)
         #this loop will attempt to match genmuons to KMTF muons if eta<eta_max and pT>20GeV. used for efficiency plot. 
         #this piece of the code is used to return information about efficiency vs pT in "===================".
@@ -195,25 +196,25 @@ def event_loop(dataset, event_num, thetaDigi,eta_max,conv_z=False, conv_k=False)
 #=====================================================================================================================
         gen_pt_unmatched_glob.extend(np.array(gen_pt_event)) #add unmatched gen muon pt to global array WITHOUT 20 GEV PT CUT! denom of efficiency curve. 
 
-        KMTFTrack_eta_event=get_KMTFTrack_eta(event, thetaDigi)
-        KMTFTrack_phi_event=get_KMTFTrack_phi(event, thetaDigi)
-        KMTFTrack_zvtx_event=get_KMTFTrack_zVtx(event, thetaDigi)
-        KMTFTrack_kslope_event=get_KMTFTrack_kSlope(event, thetaDigi)
+        KMTFTrack_eta_event=get_KMTFTrack_eta(event, thetaDigi, pt_min=10, eta_max=eta_max)
+        KMTFTrack_phi_event=get_KMTFTrack_phi(event, thetaDigi,pt_min=10, eta_max=eta_max)
+        KMTFTrack_zvtx_event=get_KMTFTrack_zVtx(event, thetaDigi, pt_min=10,eta_max=eta_max)
+        KMTFTrack_kslope_event=get_KMTFTrack_kSlope(event, thetaDigi, pt_min=10,eta_max=eta_max)
         gen_pt_KMTFTracks_matched_event=[]
-        KMTF_phEta_displaced_event=get_KMTF_muons_phEta(event, "displaced",pt_min=20,eta_max=eta_max)
-        KMTF_phEta_prompt_event=get_KMTF_muons_phEta(event, "prompt",pt_min=20,eta_max=eta_max)
+        KMTF_phEta_displaced_event=get_KMTF_muons_phEta(event, "displaced",pt_min=10,eta_max=eta_max)
+        KMTF_phEta_prompt_event=get_KMTF_muons_phEta(event, "prompt",pt_min=10,eta_max=eta_max)
         gen_pt_KMTF_matched_displaced_event=[]
         gen_pt_KMTF_matched_prompt_event=[]
 
-        SAMuons_phEta_displaced_event=get_SAMuons_phEta(event, "displaced",pt_min=20,eta_max=eta_max)
-        SAMuons_phEta_prompt_event=get_SAMuons_phEta(event, "prompt",pt_min=20,eta_max=eta_max)
+        SAMuons_phEta_displaced_event=get_SAMuons_phEta(event, "displaced",pt_min=10,eta_max=eta_max)
+        SAMuons_phEta_prompt_event=get_SAMuons_phEta(event, "prompt",pt_min=10,eta_max=eta_max)
         gen_pt_SAMuons_matched_displaced_event=[]
         gen_pt_SAMuons_matched_prompt_event=[]
 
         #match all gen muons in acceptance to KMTF tracks by global deltaR.
         #IMPORTANT: this is additive to (not a replacement for) the legacy
         #KMTF/SAMuons eta-based matching blocks below.
-        match_idx_KMTFTracks=match_indices_global_tracks(gen_eta_event, gen_phi_event, KMTFTrack_eta_event, KMTFTrack_phi_event, max_dr=0.6)
+        match_idx_KMTFTracks=match_indices_global_tracks(gen_eta_event, gen_phi_event, KMTFTrack_eta_event, KMTFTrack_phi_event, max_dr=0.4)
         match_idx_KMTF_displaced=match_indices_global(gen_eta_event, KMTF_phEta_displaced_event)
         match_idx_KMTF_prompt=match_indices_global(gen_eta_event, KMTF_phEta_prompt_event)
 

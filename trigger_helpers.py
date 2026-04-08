@@ -190,54 +190,62 @@ def make_plot_dir(name):
     return outdir
 
 def get_KMTF_muons_phPt(event, vertex, pt_min=0, pt_max=1000, eta_max=1.3):
-    event.getByLabel("l1tKMTFMuonsGmt",vertex,"L1P2GT", KMTFhandle)
+    event.getByLabel("gmtKMTFMuons",vertex,"L1P2GT3", KMTFhandle)
     val=[float(g.phPt()) for g in KMTFhandle.product() if abs(g.phEta())<eta_max and pt_min<g.phPt()<pt_max]
     return val
 
 def get_KMTF_muons_phEta(event, vertex, pt_min=0, pt_max=1000, eta_max=1.3):
-    event.getByLabel("l1tKMTFMuonsGmt",vertex,"L1P2GT", KMTFhandle)
+    event.getByLabel("gmtKMTFMuons",vertex,"L1P2GT3", KMTFhandle)
     val=[float(g.phEta()) for g in KMTFhandle.product() if abs(g.phEta())<eta_max and pt_min<g.phPt()<pt_max]
     return val
 
 def get_SAMuons_phPt(event, vertex, pt_min=0, pt_max=1000, eta_max=1.3):
-    event.getByLabel("l1tSAMuonsGmt",vertex,"L1P2GT", SAMuonshandle)
+    event.getByLabel("gmtKMTFMuons",vertex,"L1P2GT3", SAMuonshandle)
     val=[float(g.phPt()) for g in SAMuonshandle.product() if abs(g.phEta())<eta_max and pt_min<g.phPt()<pt_max]
     return val
 
 def get_SAMuons_phEta(event, vertex, pt_min=0, pt_max=1000, eta_max=1.3):
-    event.getByLabel("l1tSAMuonsGmt",vertex,"L1P2GT", SAMuonshandle)
+    event.getByLabel("gmtKMTFMuons",vertex,"L1P2GT3", SAMuonshandle)
     val=[float(g.phEta()) for g in SAMuonshandle.product() if abs(g.phEta())<eta_max and pt_min<g.phPt()<pt_max]
     return val
 
-def get_KMTFTrack_zVtx(event, thetaDigi=True):
-    event.getByLabel("l1tKMTFMuonsGmt", "kmtfTracks", "L1P2GT", Trackshandle)
+def get_KMTFTrack_zVtx(event, thetaDigi=True, pt_min=0, pt_max=1000, eta_max=1.3):
+    event.getByLabel("gmtKMTFMuons", "kmtfTracks", "L1P2GT3", Trackshandle)
     tracks = Trackshandle.product()
     if thetaDigi:
-        tracks = [g for g in tracks if any(s.etaQuality() > 0 for s in g.stubs())]
+        tracks = [g for g in tracks if any(s.etaQuality() > 0 for s in g.stubs()) and abs(g.eta()) < eta_max and pt_min < g.pt() < pt_max]
+    else:
+        tracks = [g for g in tracks if abs(g.eta()) < eta_max and pt_min < g.pt() < pt_max]
     val = [float(g.zPosition()) for g in tracks]
     return val
 
-def get_KMTFTrack_eta(event, thetaDigi=True):
-    event.getByLabel("l1tKMTFMuonsGmt", "kmtfTracks", "L1P2GT", Trackshandle)
-    tracks = Trackshandle.product()
+def get_KMTFTrack_eta(event, thetaDigi=True, pt_min=0, pt_max=1000, eta_max=1.3):
+    event.getByLabel("gmtKMTFMuons", "kmtfTracks", "L1P2GT3", Trackshandle)
+    tracks = Trackshandle.product() 
     if thetaDigi:
-        tracks = [g for g in tracks if any(s.etaQuality() > 0 for s in g.stubs())]
+        tracks = [g for g in tracks if any(s.etaQuality() > 0 for s in g.stubs()) and abs(g.eta()) < eta_max and pt_min < g.pt() < pt_max]
+    else:
+        tracks = [g for g in tracks if abs(g.eta()) < eta_max and pt_min < g.pt() < pt_max]
     val = [float(g.eta()) for g in tracks]
     return val
 
-def get_KMTFTrack_phi(event, thetaDigi=True):
-    event.getByLabel("l1tKMTFMuonsGmt", "kmtfTracks", "L1P2GT", Trackshandle)
-    tracks = Trackshandle.product()
+def get_KMTFTrack_phi(event, thetaDigi=True, pt_min=0, pt_max=1000, eta_max=1.3):
+    event.getByLabel("gmtKMTFMuons", "kmtfTracks", "L1P2GT3", Trackshandle)
+    tracks = Trackshandle.product() 
     if thetaDigi:
-        tracks = [g for g in tracks if any(s.etaQuality() > 0 for s in g.stubs())]
+        tracks = [g for g in tracks if any(s.etaQuality() > 0 for s in g.stubs()) and abs(g.eta()) < eta_max and pt_min < g.pt() < pt_max]
+    else:
+        tracks = [g for g in tracks if abs(g.eta()) < eta_max and pt_min < g.pt() < pt_max]
     val = [float(g.phi()) for g in tracks]
     return val
 
-def get_KMTFTrack_kSlope(event, thetaDigi=True):
-    event.getByLabel("l1tKMTFMuonsGmt", "kmtfTracks", "L1P2GT", Trackshandle)
+def get_KMTFTrack_kSlope(event, thetaDigi=True, pt_min=0, pt_max=1000, eta_max=1.3):
+    event.getByLabel("gmtKMTFMuons", "kmtfTracks", "L1P2GT3", Trackshandle)
     tracks = Trackshandle.product()
     if thetaDigi:
-        tracks = [g for g in tracks if any(s.etaQuality() > 0 for s in g.stubs())]
+        tracks = [g for g in tracks if any(s.etaQuality() > 0 for s in g.stubs()) and abs(g.eta()) < eta_max and pt_min < g.pt() < pt_max]
+    else:
+        tracks = [g for g in tracks if abs(g.eta()) < eta_max and pt_min < g.pt() < pt_max]
     val = [float(g.kSlope()) for g in tracks]
     return val
 
