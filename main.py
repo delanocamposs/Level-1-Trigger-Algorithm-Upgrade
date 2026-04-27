@@ -15,8 +15,9 @@ ZRES_CONV=65536.0/1500.0
 KRES_CONV=65536.0/2
 CURV_CONV=(1<<15)/1.25
 
-def event_loop(event_num, thetaDigi, eta_max, eos_dataset=None,conv_z=False, conv_k=False):
-    #events=Events("DY_Phase2_200_merged.root")
+def event_loop(event_num, thetaDigi, eta_max, local_dataset=None,eos_dataset=None, conv_z=False, conv_k=False):
+    if local_dataset is None and eos_dataset is None:
+        print("you have to choose a dataset to process. set local_dataset or eos_dataset")
     if eos_dataset is not None:
         dataset_path={
         "prompt":"/eos/uscms/store/user/dacampos/L1KMTF/PromptDY_PU200/DYToLL_M-50_TuneCP5_14TeV-pythia8/PHASEII_PromptDY_PU200/260324_080705/0000/",
@@ -46,7 +47,7 @@ def event_loop(event_num, thetaDigi, eta_max, eos_dataset=None,conv_z=False, con
         print(f"Using {len(good_files)} files")
         events=Events(good_files)
     else:
-        events=Events("output_DY_Phase2_L1T_KMTF_linearEta.root")
+        events=Events(local_dataset)
     thetahandle=Handle("L1Phase2MuDTThContainer")
     genhandle=Handle("vector<reco::GenParticle>")
     KMTFhandle=Handle("vector<l1t::SAMuon>")
@@ -214,7 +215,7 @@ def event_loop(event_num, thetaDigi, eta_max, eos_dataset=None,conv_z=False, con
         #match all gen muons in acceptance to KMTF tracks by global deltaR.
         #IMPORTANT: this is additive to (not a replacement for) the legacy
         #KMTF/SAMuons eta-based matching blocks below.
-        match_idx_KMTFTracks=match_indices_global_tracks(gen_eta_event, gen_phi_event, KMTFTrack_eta_event, KMTFTrack_phi_event, max_dr=0.4)
+        match_idx_KMTFTracks=match_indices_global_tracks(gen_eta_event, gen_phi_event, KMTFTrack_eta_event, KMTFTrack_phi_event, max_dr=0.6)
         match_idx_KMTF_displaced=match_indices_global(gen_eta_event, KMTF_phEta_displaced_event)
         match_idx_KMTF_prompt=match_indices_global(gen_eta_event, KMTF_phEta_prompt_event)
 
