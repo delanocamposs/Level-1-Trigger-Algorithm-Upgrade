@@ -190,27 +190,27 @@ def make_plot_dir(name):
     return outdir
 
 def get_KMTF_muons_phPt(event, vertex, pt_min=0, pt_max=1000, eta_max=1.3):
-    event.getByLabel("gmtKMTFMuons",vertex,"L1P2GT3", KMTFhandle)
+    event.getByLabel("gmtKMTFMuons",vertex,"L1P2GT2", KMTFhandle)
     val=[float(g.phPt()) for g in KMTFhandle.product() if abs(g.phEta())<eta_max and pt_min<g.phPt()<pt_max]
     return val
 
 def get_KMTF_muons_phEta(event, vertex, pt_min=0, pt_max=1000, eta_max=1.3):
-    event.getByLabel("gmtKMTFMuons",vertex,"L1P2GT3", KMTFhandle)
+    event.getByLabel("gmtKMTFMuons",vertex,"L1P2GT2", KMTFhandle)
     val=[float(g.phEta()) for g in KMTFhandle.product() if abs(g.phEta())<eta_max and pt_min<g.phPt()<pt_max]
     return val
 
 def get_SAMuons_phPt(event, vertex, pt_min=0, pt_max=1000, eta_max=1.3):
-    event.getByLabel("gmtKMTFMuons",vertex,"L1P2GT3", SAMuonshandle)
+    event.getByLabel("gmtKMTFMuons",vertex,"L1P2GT2", SAMuonshandle)
     val=[float(g.phPt()) for g in SAMuonshandle.product() if abs(g.phEta())<eta_max and pt_min<g.phPt()<pt_max]
     return val
 
 def get_SAMuons_phEta(event, vertex, pt_min=0, pt_max=1000, eta_max=1.3):
-    event.getByLabel("gmtKMTFMuons",vertex,"L1P2GT3", SAMuonshandle)
+    event.getByLabel("gmtKMTFMuons",vertex,"L1P2GT2", SAMuonshandle)
     val=[float(g.phEta()) for g in SAMuonshandle.product() if abs(g.phEta())<eta_max and pt_min<g.phPt()<pt_max]
     return val
 
 def get_KMTFTrack_zVtx(event, thetaDigi=True, pt_min=0, pt_max=1000, eta_max=1.3):
-    event.getByLabel("gmtKMTFMuons", "kmtfTracks", "L1P2GT3", Trackshandle)
+    event.getByLabel("gmtKMTFMuons", "kmtfTracks", "L1P2GT2", Trackshandle)
     tracks = Trackshandle.product()
     if thetaDigi:
         tracks = [g for g in tracks if any(s.etaQuality() > 0 for s in g.stubs()) and abs(g.eta()) < eta_max and pt_min < g.pt() < pt_max]
@@ -220,7 +220,7 @@ def get_KMTFTrack_zVtx(event, thetaDigi=True, pt_min=0, pt_max=1000, eta_max=1.3
     return val
 
 def get_KMTFTrack_eta(event, thetaDigi=True, pt_min=0, pt_max=1000, eta_max=1.3):
-    event.getByLabel("gmtKMTFMuons", "kmtfTracks", "L1P2GT3", Trackshandle)
+    event.getByLabel("gmtKMTFMuons", "kmtfTracks", "L1P2GT2", Trackshandle)
     tracks = Trackshandle.product() 
     if thetaDigi:
         tracks = [g for g in tracks if any(s.etaQuality() > 0 for s in g.stubs()) and abs(g.eta()) < eta_max and pt_min < g.pt() < pt_max]
@@ -230,7 +230,7 @@ def get_KMTFTrack_eta(event, thetaDigi=True, pt_min=0, pt_max=1000, eta_max=1.3)
     return val
 
 def get_KMTFTrack_phi(event, thetaDigi=True, pt_min=0, pt_max=1000, eta_max=1.3):
-    event.getByLabel("gmtKMTFMuons", "kmtfTracks", "L1P2GT3", Trackshandle)
+    event.getByLabel("gmtKMTFMuons", "kmtfTracks", "L1P2GT2", Trackshandle)
     tracks = Trackshandle.product() 
     if thetaDigi:
         tracks = [g for g in tracks if any(s.etaQuality() > 0 for s in g.stubs()) and abs(g.eta()) < eta_max and pt_min < g.pt() < pt_max]
@@ -240,7 +240,7 @@ def get_KMTFTrack_phi(event, thetaDigi=True, pt_min=0, pt_max=1000, eta_max=1.3)
     return val
 
 def get_KMTFTrack_kSlope(event, thetaDigi=True, pt_min=0, pt_max=1000, eta_max=1.3):
-    event.getByLabel("gmtKMTFMuons", "kmtfTracks", "L1P2GT3", Trackshandle)
+    event.getByLabel("gmtKMTFMuons", "kmtfTracks", "L1P2GT2", Trackshandle)
     tracks = Trackshandle.product()
     if thetaDigi:
         tracks = [g for g in tracks if any(s.etaQuality() > 0 for s in g.stubs()) and abs(g.eta()) < eta_max and pt_min < g.pt() < pt_max]
@@ -248,12 +248,4 @@ def get_KMTFTrack_kSlope(event, thetaDigi=True, pt_min=0, pt_max=1000, eta_max=1
         tracks = [g for g in tracks if abs(g.eta()) < eta_max and pt_min < g.pt() < pt_max]
     val = [float(g.kSlope()) for g in tracks]
     return val
-
-
-
-
-
-
-
-
 
