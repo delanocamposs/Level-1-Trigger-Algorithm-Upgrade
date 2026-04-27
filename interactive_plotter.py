@@ -517,14 +517,14 @@ def plot_deltaz_vs_curv(data,st,conv_k=False, conv_z=False,show=False,xrange=(-7
         raise ValueError("conv_z and conv_k must be the same for consistent units. ")
     if st==1:
         if conv_z==False:
-            dR=-.109
+            dR=.109
         else:
-            dR=-80.3
+            dR=80.3
     elif st==2: 
         if conv_z==False:
-            dR=-.142
+            dR=.142
         else:
-            dR=-106
+            dR=106
     else:
         print("cannot propagate to station 3 (no stubs at st 4).")
     for muid,z0,curv,slope in zip(data["mu_id"][st+1],data["stub_z"][st+1],data["gen_curv"][st+1],data["stub_k"][st+1]):
@@ -534,7 +534,7 @@ def plot_deltaz_vs_curv(data,st,conv_k=False, conv_z=False,show=False,xrange=(-7
         if muid not in m:
             continue
         z0,curv,slope=m[muid]
-        z_pred=z0+slope*dR
+        z_pred=z0-slope*dR
         h.Fill(curv,z_pred-z_meas)
     h.SetStats(0)
     c.SetLeftMargin(0.15)
@@ -772,7 +772,7 @@ def plot_eff_vs_eta_prompt_displaced(data,prompt_data,displaced_data,show=False,
     return c,effP,effD
 
 _zvtx_call_count = 0
-def plot_overlay_prompt_displaced(prompt_data, displaced_data1,displaced_data2=None,displaced_data3=None, show=False, n_bins=50, xrange=(-1500, 1500),title="Normalized KMTF Track z_{vtx};z_{vtx} [cm];a.u.",color_prompt=ROOT.kRed, color_displaced=ROOT.kBlue):
+def plot_overlay_prompt_displaced(prompt_data, displaced_data1, displaced_data2=None, displaced_data3=None,minbias_data=None, show=False, n_bins=50, xrange=(-1500, 1500),title="Normalized KMTF Track z_{vtx};z_{vtx} [cm];a.u.", color_prompt=ROOT.kRed, color_displaced=ROOT.kBlue, color_minbias=ROOT.kGreen+2):
     global _zvtx_call_count
     _zvtx_call_count += 1
     suf = _zvtx_call_count
@@ -781,64 +781,88 @@ def plot_overlay_prompt_displaced(prompt_data, displaced_data1,displaced_data2=N
     direc = make_plot_dir("kmtf_zvtx_distribution")
     z_bins = tuple(np.linspace(xrange[0], xrange[1], n_bins + 1))
     bins = array('d', z_bins)
+
     hPrompt = ROOT.TH1D(f"hPrompt_{suf}", title, n_bins, bins)
-    hDisp = ROOT.TH1D(f"hDisp_{suf}",   title, n_bins, bins)
-    hPrompt.SetDirectory(0); hDisp.SetDirectory(0)
+    hDisp   = ROOT.TH1D(f"hDisp_{suf}",   title, n_bins, bins)
+    hMB     = ROOT.TH1D(f"hMB_{suf}",     title, n_bins, bins)
+    hPrompt.SetDirectory(0); hDisp.SetDirectory(0); hMB.SetDirectory(0)
+
     for z in prompt_data["kmtf_zvtx"]:
-        hPrompt.Fill(float(z))
+        hPrompt.Fill((1500/65536)*float(z))
     for z in displaced_data1["kmtf_zvtx"]:
-        hDisp.Fill(float(z))
+        hDisp.Fill((1500/65536)*float(z))
     if displaced_data2 is not None:
         for z in displaced_data2["kmtf_zvtx"]:
-            hDisp.Fill(float(z))
+            hDisp.Fill((1500/65536)*float(z))
     if displaced_data3 is not None:
         for z in displaced_data3["kmtf_zvtx"]:
-            hDisp.Fill(float(z))
-    hPrompt.SetLineColor(color_prompt);  hPrompt.SetMarkerColor(color_prompt);  hPrompt.SetMarkerStyle(20)
-    hDisp.SetLineColor(color_displaced); hDisp.SetMarkerColor(color_displaced); hDisp.SetMarkerStyle(21)
+            hDisp.Fill((1500/65536)*float(z))
+    if minbias_data is not None:
+        for z in minbias_data["kmtf_zvtx"]:
+            hMB.Fill((1500/65536)*float(z))
+
+    hPrompt.SetLineColor(color_prompt);   hPrompt.SetMarkerColor(color_prompt);   hPrompt.SetMarkerStyle(20); hPrompt.SetLineWidth(2)
+    hDisp.SetLineColor(color_displaced);  hDisp.SetMarkerColor(color_displaced);  hDisp.SetMarkerStyle(21); hDisp.SetLineWidth(2)
+    hMB.SetLineColor(color_minbias);      hMB.SetMarkerColor(color_minbias);      hMB.SetMarkerStyle(22); hMB.SetLineWidth(2)
+
     if hPrompt.Integral() > 0: hPrompt.Scale(1.0 / hPrompt.Integral())
-    if hDisp.Integral()> 0: hDisp.Scale(1.0 / hDisp.Integral())
-    hPrompt.SetStats(0)
-    hDisp.SetStats(0)
+    if hDisp.Integral()   > 0: hDisp.Scale(1.0 / hDisp.Integral())
+    if hMB.Integral()     > 0: hMB.Scale(1.0 / hMB.Integral())
+
+    hPrompt.SetStats(0); hDisp.SetStats(0); hMB.SetStats(0)
+
     gP = ROOT.TF1(f"gP_{suf}", "gaus", xrange[0], xrange[1])
     gD = ROOT.TF1(f"gD_{suf}", "gaus", xrange[0], xrange[1])
-    gP.SetLineColor(color_prompt);  gP.SetLineWidth(2); gP.SetLineStyle(2)
+    gP.SetLineColor(color_prompt);    gP.SetLineWidth(2); gP.SetLineStyle(2)
     gD.SetLineColor(color_displaced); gD.SetLineWidth(2); gD.SetLineStyle(2)
     hPrompt.Fit(gP, "RQ")
     hDisp.Fit(gD, "RQ")
+
     c = ROOT.TCanvas(f"c_kmtf_zvtx_{suf}", "", 800, 600)
-    y_max = max(hPrompt.GetMaximum(), hDisp.GetMaximum()) * 1.4
+
+    histos_to_draw = [hPrompt, hDisp]
+    if minbias_data is not None:
+        histos_to_draw.append(hMB)
+    y_max = max(h.GetMaximum() for h in histos_to_draw) * 1.4
     hPrompt.GetYaxis().SetRangeUser(0, y_max)
+
     hPrompt.Draw("HIST")
     hDisp.Draw("HIST SAME")
-    #gP.Draw("SAME")
-    #gD.Draw("SAME")
+    if minbias_data is not None:
+        hMB.Draw("HIST SAME")
+
     leg = ROOT.TLegend(0.58, 0.62, 0.89, 0.88)
     leg.SetBorderSize(0); leg.SetFillStyle(0)
-    leg.SetTextSize(0.030)
-    leg.AddEntry(hPrompt, "prompt DY", "l")
-    #leg.AddEntry(gP, f"#sigma={gP.GetParameter(2):.1f} cm", "l")
-    leg.AddEntry(hDisp,"displaced", "l")
-    #leg.AddEntry(gD, f"#sigma={gD.GetParameter(2):.1f} cm", "l")
+    leg.SetTextSize(0.035)
+    leg.AddEntry(hPrompt, "DY + Jets",             "l")
+    leg.AddEntry(hDisp,   "Displaced Muon Gun",    "l")
+    if minbias_data is not None:
+        leg.AddEntry(hMB, "MinBias",               "l")
     leg.Draw()
-    print("sigma", gP.GetParameter(2))
+
+    print("sigma prompt", gP.GetParameter(2))
+    print("sigma displaced", gD.GetParameter(2))
+
     c.SaveAs(f"{direc}/kmtf_zvtx_prompt_displaced.png")
     f = ROOT.TFile(f"{direc}/kmtf_zvtx_prompt_displaced.root", "RECREATE")
-    hPrompt.Write(); hDisp.Write(); gP.Write(); gD.Write(); c.Write(); f.Close()
+    hPrompt.Write(); hDisp.Write(); hMB.Write(); gP.Write(); gD.Write(); c.Write(); f.Close()
+
     store_plots["canvas"][f"kmtf_zvtx_prompt_displaced_{suf}"] = c
     store_plots["histos"][f"hPrompt_zvtx_{suf}"] = hPrompt
-    store_plots["histos"][f"hDisp_zvtx_{suf}"] = hDisp
-    store_plots["histos"][f"leg_zvtx_{suf}"] = leg
-    store_plots["fits"][f"gP_zvtx_{suf}"] = gP
-    store_plots["fits"][f"gD_zvtx_{suf}"]= gD
-    return c, hPrompt, hDisp, gP, gD
+    store_plots["histos"][f"hDisp_zvtx_{suf}"]   = hDisp
+    store_plots["histos"][f"hMB_zvtx_{suf}"]     = hMB
+    store_plots["histos"][f"leg_zvtx_{suf}"]      = leg
+    store_plots["fits"][f"gP_zvtx_{suf}"]         = gP
+    store_plots["fits"][f"gD_zvtx_{suf}"]         = gD
+
+    return c, hPrompt, hDisp, hMB, gP, gD
 
 _simple_plot_call_count = 0
 def plot_ztrack_minus_zgen(data,show=False,showFit=True,fitColor=ROOT.kRed,nbins=100,xrange=(-300,300),title="z_{track}-z_{gen};z_{track}-z_{gen} (cm);Entries",out_name="ztrack_minus_zgen_1d"):
     global _simple_plot_call_count
     _simple_plot_call_count += 1
-    ztrack_vals=data["kmtf_zvtx_KMTFTracks_matched"]
-    zgen_vals=data["gen_vz_KMTFTracks_matched"]
+    ztrack_vals=(1500/65536)*np.array(data["kmtf_zvtx_KMTFTracks_matched"], dtype=float)
+    zgen_vals=np.array(data["gen_vz_KMTFTracks_matched"], dtype=float)
     if not show:
         ROOT.gROOT.SetBatch(True)
     if len(ztrack_vals)!=len(zgen_vals):
@@ -848,7 +872,7 @@ def plot_ztrack_minus_zgen(data,show=False,showFit=True,fitColor=ROOT.kRed,nbins
     c=ROOT.TCanvas(f"c_{uniq}","",800,600)
     h=ROOT.TH1F(f"h_{uniq}",title,nbins,xrange[0],xrange[1])
     h.SetDirectory(0)
-    dz=np.array(ztrack_vals,dtype=float)-np.array(zgen_vals,dtype=float)
+    dz=ztrack_vals-zgen_vals
     for val in dz:
         h.Fill(float(val))
     h.SetStats(0)
@@ -864,11 +888,14 @@ def plot_ztrack_minus_zgen(data,show=False,showFit=True,fitColor=ROOT.kRed,nbins
         fit.Draw("SAME")
         sigma=fit.GetParameter(2)
         sigma_err=fit.GetParError(2)
-        leg=ROOT.TLegend(0.62,0.80,0.88,0.88)
+        leg=ROOT.TLegend(0.6,0.80,0.86,0.88)
         leg.SetBorderSize(0)
         leg.SetFillStyle(0)
-        leg.AddEntry(0,f"#sigma = {sigma:.3g} #pm {sigma_err:.2g}","")
+        leg.SetTextSize(0.035)
+        leg.AddEntry(fit, f"Gaussian fit", "L")
+        leg.AddEntry(0,f"#sigma = {sigma:.3g} #pm {sigma_err:.2g} cm","")
         leg.Draw()
+
     store_plots["canvas"][out_name]=c
     store_plots["histos"][out_name]=h
     if fit is not None:
@@ -909,7 +936,7 @@ def plot_etatrack_minus_etagen(data,show=False,showFit=True,fitColor=ROOT.kRed,n
         fit.Draw("SAME")
         sigma=fit.GetParameter(2)
         sigma_err=fit.GetParError(2)
-        leg=ROOT.TLegend(0.62,0.80,0.88,0.88)
+        leg=ROOT.TLegend(0.6,0.80,0.86,0.88)
         leg.SetBorderSize(0)
         leg.SetFillStyle(0)
         leg.SetTextSize(0.035)
