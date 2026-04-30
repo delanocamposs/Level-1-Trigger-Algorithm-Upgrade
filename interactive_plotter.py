@@ -1064,3 +1064,159 @@ def plot_etagen_vs_kslope(data, k_phys, eta_phys,show=False,xbins=120,ybins=120,
     store_plots["fits"][f"{uniq}_profile_fitres"]=fitres
     store_plots["histos"][f"{uniq}_profile_legend"]=leg
     return c,h,c_prof,p,f_lin,fitres
+
+def plot_dz_overlay(data1, data2,show=False,showFit=True, fitColor1=ROOT.kRed-9, fitColor2 = ROOT.kBlue - 10, nbins=100,xrange=(-200,200),title="z_{track}-z_{gen};z_{track}-z_{gen} (cm);Entries",out_name="ztrack_minus_zgen_1d", h1color = ROOT.kRed - 3, h2color = ROOT.kBlue - 7):
+    global _simple_plot_call_count
+    _simple_plot_call_count += 1
+    ztrack_vals=(1500/65536)*np.array(data1["kmtf_zvtx_KMTFTracks_matched"], dtype=float)
+    zgen_vals=np.array(data1["gen_vz_KMTFTracks_matched"], dtype=float)
+    if not show:
+        ROOT.gROOT.SetBatch(True)
+    if len(ztrack_vals)!=len(zgen_vals):
+        raise ValueError("ztrack_vals and zgen_vals must have the same length for event-by-event subtraction.")
+    direc=make_plot_dir("ztrack_minus_zgen")
+    uniq=f"{out_name}_{_simple_plot_call_count}"
+    c=ROOT.TCanvas(f"c_{uniq}","",800,600)
+    h=ROOT.TH1F(f"h_{uniq}",title,nbins,xrange[0],xrange[1])
+    h.SetDirectory(0)
+    dz=ztrack_vals-zgen_vals
+    for val in dz:
+        h.Fill(float(val))
+    h.SetStats(0)
+    h.SetLineWidth(1)
+    h.SetLineColor(h1color)
+    h.Draw("HIST")
+    fit=None
+    leg=ROOT.TLegend(0.6,0.70,0.86,0.88)
+    leg.AddEntry(h, f"Offline KMTF", "L")
+    if showFit:
+        fit=ROOT.TF1(f"fit_{uniq}","gaus",xrange[0],xrange[1])
+        fit.SetLineColor(fitColor1)
+        fit.SetLineWidth(2)
+        fit.SetNpx(1000)   
+        h.Fit(fit,"RQS")
+        fit.Draw("SAME")
+        sigma=fit.GetParameter(2)
+        sigma_err=fit.GetParError(2)
+        leg.SetBorderSize(0)
+        leg.SetFillStyle(0)
+        leg.SetTextSize(0.035)
+        leg.AddEntry(fit, f"fit #sigma = {sigma:.3g} #pm {sigma_err:.2g} cm", "")
+    ztrack_vals1=(1500/65536)*np.array(data2["kmtf_zvtx_KMTFTracks_matched"], dtype=float)
+    zgen_vals1=np.array(data2["gen_vz_KMTFTracks_matched"], dtype=float)
+    if not show:
+        ROOT.gROOT.SetBatch(True)
+    if len(ztrack_vals1)!=len(zgen_vals1):
+        raise ValueError("ztrack_vals and zgen_vals must have the same length for event-by-event subtraction.")
+    h2=ROOT.TH1F(f"h_{uniq}_1",title,nbins,xrange[0],xrange[1])
+    h2.SetDirectory(0)
+    dz1=ztrack_vals1-zgen_vals1
+    for val in dz1:
+        h2.Fill(float(val))
+    h2.SetStats(0)
+    h2.SetLineWidth(1)
+    h2.SetLineColor(h2color)
+    leg.AddEntry(h2, f"LUT-based KMTF", "L")
+    h2.Draw("HIST, SAME")
+    if showFit:
+        fit1=ROOT.TF1(f"fit_{uniq}_1","gaus",xrange[0],xrange[1])
+        fit1.SetLineColor(fitColor2)
+        fit1.SetLineWidth(2)
+        fit1.SetNpx(1000)   
+        h2.Fit(fit1,"RQS")
+        fit1.Draw("SAME")
+        sigma1=fit1.GetParameter(2)
+        sigma_err1=fit1.GetParError(2)
+        leg.SetBorderSize(0)
+        leg.SetFillStyle(0)
+        leg.SetTextSize(0.035)
+        leg.AddEntry(fit, f"fit #sigma = {sigma1:.3g} #pm {sigma_err1:.2g} cm", "")
+    store_plots["canvas"][out_name]=c
+    store_plots["histos"][out_name]=h
+    if fit is not None:
+        store_plots["fits"][out_name]=fit
+    if leg is not None:
+        store_plots["histos"][f"{out_name}_legend"]=leg
+    leg.Draw()
+    c.Update()
+    c.SaveAs(f"{direc}/{out_name}.png")
+    return c
+
+
+def plot_etatrack_minus_etagen_overlay(data1, data2, show=False, showFit=True, fitColor1=ROOT.kRed-9, fitColor2=ROOT.kBlue-10, nbins=120, xrange=(-1.2,1.2), title="#eta_{track}-#eta_{gen};#eta_{track}-#eta_{gen};Entries", out_name="etatrack_minus_etagen_1d_overlay", h1color = ROOT.kRed - 3, h2color = ROOT.kBlue -7):
+    global _simple_plot_call_count
+    _simple_plot_call_count += 1
+    etatrack_vals=np.array(data1["kmtf_eta_KMTFTracks_matched"], dtype=float)
+    etagen_vals=np.array(data1["gen_eta_KMTFTracks_allmatched"], dtype=float)
+    if not show:
+        ROOT.gROOT.SetBatch(True)
+    if len(etatrack_vals)!=len(etagen_vals):
+        raise ValueError("etatrack_vals and etagen_vals must have the same length for event-by-event subtraction.")
+    direc=make_plot_dir("etatrack_minus_etagen")
+    uniq=f"{out_name}_{_simple_plot_call_count}"
+    c=ROOT.TCanvas(f"c_{uniq}","",800,600)
+    h=ROOT.TH1F(f"h_{uniq}",title,nbins,xrange[0],xrange[1])
+    h.SetDirectory(0)
+    deta=etatrack_vals-etagen_vals
+    for val in deta:
+        h.Fill(float(val))
+    h.SetStats(0)
+    h.SetLineWidth(1)
+    h.SetLineColor(h1color)
+    h.Draw("HIST")
+    leg=ROOT.TLegend(0.55,0.70,0.86,0.88)
+    leg.AddEntry(h, f"Offline KMTF", "L")
+    if showFit:
+        fit=ROOT.TF1(f"fit_{uniq}","gaus",xrange[0],xrange[1])
+        fit.SetLineColor(fitColor1)
+        fit.SetLineWidth(2)
+        fit.SetNpx(1000)
+        h.Fit(fit,"RQS")
+        fit.Draw("SAME")
+        sigma=fit.GetParameter(2)
+        sigma_err=fit.GetParError(2)
+        leg.SetBorderSize(0)
+        leg.SetFillStyle(0)
+        leg.SetTextSize(0.035)
+        leg.AddEntry(fit, f"fit #sigma = {sigma:.3g} #pm {sigma_err:.2g}", "")
+    etatrack_vals1=np.array(data2["kmtf_eta_KMTFTracks_matched"], dtype=float)
+    etagen_vals1=np.array(data2["gen_eta_KMTFTracks_allmatched"], dtype=float)
+    if len(etatrack_vals1)!=len(etagen_vals1):
+        raise ValueError("etatrack_vals and etagen_vals must have the same length for event-by-event subtraction.")
+    h2=ROOT.TH1F(f"h_{uniq}_1",title,nbins,xrange[0],xrange[1])
+    h2.SetDirectory(0)
+    deta1=etatrack_vals1-etagen_vals1
+    for val in deta1:
+        h2.Fill(float(val))
+    h2.SetStats(0)
+    h2.SetLineWidth(1)
+    h2.SetLineColor(h2color)
+    max_y=max(h.GetMaximum(), h2.GetMaximum())
+    h.SetMaximum(1.15*max_y if max_y>0 else 1.0)
+    leg.AddEntry(h2, f"LUT-based KMTF", "L")
+    h2.Draw("HIST SAME")
+    if showFit:
+        fit1=ROOT.TF1(f"fit_{uniq}_1","gaus",xrange[0],xrange[1])
+        fit1.SetLineColor(fitColor2)
+        fit1.SetLineWidth(2)
+        fit1.SetNpx(1000)
+        h2.Fit(fit1,"RQS")
+        fit1.Draw("SAME")
+        sigma1=fit1.GetParameter(2)
+        sigma_err1=fit1.GetParError(2)
+        leg.SetBorderSize(0)
+        leg.SetFillStyle(0)
+        leg.SetTextSize(0.035)
+        leg.AddEntry(fit, f"fit #sigma = {sigma1:.3g} #pm {sigma_err1:.2g}", "")
+    store_plots["canvas"][out_name]=c
+    store_plots["histos"][out_name]=h
+    store_plots["histos"][f"{out_name}_1"]=h2
+    if fit is not None:
+        store_plots["fits"][out_name]=fit
+        store_plots["fits"][f"{out_name}_1"]=fit1
+    if leg is not None:
+        store_plots["histos"][f"{out_name}_legend"]=leg
+        leg.Draw()
+    c.Update()
+    c.SaveAs(f"{direc}/{out_name}.png")
+    return c
