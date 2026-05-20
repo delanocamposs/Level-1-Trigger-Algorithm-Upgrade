@@ -1211,9 +1211,10 @@ def plot_etatrack_minus_etagen_overlay(data1, data2, show=False, showFit=True, f
     store_plots["canvas"][out_name]=c
     store_plots["histos"][out_name]=h
     store_plots["histos"][f"{out_name}_1"]=h2
-    if fit is not None:
+    if fit and fit1 is not False:
         store_plots["fits"][out_name]=fit
-        store_plots["fits"][f"{out_name}_1"]=fit1
+        store_plots["fits"][f"{out_name}_1"]=fit
+        store_plots["fits"][f"{out_name}_2"]=fit1
     if leg is not None:
         store_plots["histos"][f"{out_name}_legend"]=leg
         leg.Draw()
