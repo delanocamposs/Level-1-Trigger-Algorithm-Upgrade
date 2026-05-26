@@ -209,6 +209,21 @@ def get_SAMuons_phEta(event, vertex, pt_min=0, pt_max=1000, eta_max=1.3):
     val=[float(g.phEta()) for g in SAMuonshandle.product() if abs(g.phEta())<eta_max and pt_min<g.phPt()<pt_max]
     return val
 
+def get_SAMuons_phZ0(event, vertex, pt_min=0, pt_max=1000, eta_max=1.3):
+    event.getByLabel("gmtKMTFMuons",vertex,"L1P2GT2", SAMuonshandle)
+    val=[float(g.phZ0()) for g in SAMuonshandle.product() if abs(g.phEta())<eta_max and pt_min<g.phPt()<pt_max]
+    return val
+
+def get_SAMuons_phPhi(event, vertex, pt_min=0, pt_max=1000, eta_max=1.3):
+    event.getByLabel("gmtKMTFMuons",vertex,"L1P2GT2", SAMuonshandle)
+    val=[float(g.phPhi()) for g in SAMuonshandle.product() if abs(g.phEta())<eta_max and pt_min<g.phPt()<pt_max]
+    return val
+
+def get_SAMuons_hwPt(event, vertex, pt_min=0, pt_max=1000, eta_max=1.3):
+    event.getByLabel("gmtKMTFMuons",vertex,"L1P2GT2", SAMuonshandle)
+    val=[float(g.hwPt()) for g in SAMuonshandle.product() if abs(g.phEta())<eta_max and pt_min<g.phPt()<pt_max]
+    return val
+
 def get_SAMuons_hwEta(event, vertex, pt_min=0, pt_max=1000, eta_max=1.3):
     event.getByLabel("gmtKMTFMuons",vertex,"L1P2GT2", SAMuonshandle)
     val=[float(g.hwEta()) for g in SAMuonshandle.product() if abs(g.phEta())<eta_max and pt_min<g.phPt()<pt_max]
