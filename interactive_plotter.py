@@ -1221,3 +1221,236 @@ def plot_etatrack_minus_etagen_overlay(data1, data2, show=False, showFit=True, f
     c.Update()
     c.SaveAs(f"{direc}/{out_name}.png")
     return c
+
+def plot_zSAMuon_minus_zgen(data,vertex="prompt",show=False,showFit=True,fitColor=ROOT.kRed,nbins=100,xrange=(-300,300),title=None,out_name=None,overlay_out_name=None,overlay_title=None,overlay_xrange=None,overlay_nbins=None):
+    global _simple_plot_call_count
+    _simple_plot_call_count += 1
+    #phZ0 is already in cm, so (unlike the KMTF track zPosition) no hw->cm conversion is needed.
+    zSAMuon_vals=np.array(data[f"samuon_z_{vertex}_matched"], dtype=float)
+    zgen_vals=np.array(data[f"gen_vz_SAMuons_{vertex}_matched"], dtype=float)
+    if title is None:
+        title=f"z_{{SAMuon}}-z_{{gen}} ({vertex});z_{{SAMuon}}-z_{{gen}} (cm);Entries"
+    if out_name is None:
+        out_name=f"zSAMuon_minus_zgen_{vertex}_1d"
+    if overlay_title is None:
+        overlay_title=f"z_{{SAMuon}} and z_{{gen}} distributions ({vertex});z (cm);Entries"
+    if overlay_xrange is None:
+        overlay_xrange=xrange
+    if overlay_nbins is None:
+        overlay_nbins=nbins
+    if not show:
+        ROOT.gROOT.SetBatch(True)
+    if len(zSAMuon_vals)!=len(zgen_vals):
+        raise ValueError("zSAMuon_vals and zgen_vals must have the same length for event-by-event subtraction.")
+    direc=make_plot_dir("zSAMuon_minus_zgen")
+    uniq=f"{out_name}_{_simple_plot_call_count}"
+    c=ROOT.TCanvas(f"c_{uniq}","",800,600)
+    h=ROOT.TH1F(f"h_{uniq}",title,nbins,xrange[0],xrange[1])
+    h.SetDirectory(0)
+    dz=4*zSAMuon_vals-zgen_vals
+    for val in dz:
+        h.Fill(float(val))
+    h.SetStats(0)
+    h.SetLineWidth(2)
+    h.Draw("HIST")
+    fit=None
+    leg=None
+    if showFit:
+        fit=ROOT.TF1(f"fit_{uniq}","gaus",xrange[0],xrange[1])
+        fit.SetLineColor(fitColor)
+        fit.SetLineWidth(2)
+        h.Fit(fit,"RQS")
+        fit.Draw("SAME")
+        sigma=fit.GetParameter(2)
+        sigma_err=fit.GetParError(2)
+        leg=ROOT.TLegend(0.6,0.80,0.86,0.88)
+        leg.SetBorderSize(0)
+        leg.SetFillStyle(0)
+        leg.SetTextSize(0.035)
+        leg.AddEntry(fit, f"Gaussian fit", "L")
+        leg.AddEntry(0,f"#sigma = {sigma:.3g} #pm {sigma_err:.2g} cm","")
+        leg.Draw()
+
+    store_plots["canvas"][out_name]=c
+    store_plots["histos"][out_name]=h
+    if fit is not None:
+        store_plots["fits"][out_name]=fit
+    if leg is not None:
+        store_plots["histos"][f"{out_name}_legend"]=leg
+    c.Update()
+    c.SaveAs(f"{direc}/{out_name}.png")
+
+    if overlay_out_name is None:
+        overlay_out_name=f"{out_name}_SAMuon_vs_gen"
+    uniq_overlay=f"{overlay_out_name}_{_simple_plot_call_count}"
+    c_overlay=ROOT.TCanvas(f"c_{uniq_overlay}","",800,600)
+    h_zSAMuon=ROOT.TH1F(f"h_zSAMuon_{uniq_overlay}",overlay_title,overlay_nbins,overlay_xrange[0],overlay_xrange[1])
+    h_zgen=ROOT.TH1F(f"h_zgen_{uniq_overlay}",overlay_title,overlay_nbins,overlay_xrange[0],overlay_xrange[1])
+    h_zSAMuon.SetDirectory(0)
+    h_zgen.SetDirectory(0)
+    for val in zSAMuon_vals:
+        h_zSAMuon.Fill(float(4*val))
+    for val in zgen_vals:
+        h_zgen.Fill(float(val))
+    h_zSAMuon.SetStats(0)
+    h_zgen.SetStats(0)
+    h_zSAMuon.SetLineWidth(2)
+    h_zgen.SetLineWidth(2)
+    h_zSAMuon.SetLineColor(ROOT.kBlue+1)
+    h_zgen.SetLineColor(ROOT.kOrange+7)
+    max_y=max(h_zSAMuon.GetMaximum(),h_zgen.GetMaximum())
+    h_zSAMuon.SetMaximum(1.15*max_y if max_y>0 else 1.0)
+    h_zSAMuon.Draw("HIST")
+    h_zgen.Draw("HIST SAME")
+    leg_overlay=ROOT.TLegend(0.62,0.78,0.88,0.88)
+    leg_overlay.SetBorderSize(0)
+    leg_overlay.SetFillStyle(0)
+    leg_overlay.AddEntry(h_zSAMuon,"z_{SAMuon}","l")
+    leg_overlay.AddEntry(h_zgen,"z_{gen}","l")
+    leg_overlay.Draw()
+    store_plots["canvas"][overlay_out_name]=c_overlay
+    store_plots["histos"][f"{overlay_out_name}_zSAMuon"]=h_zSAMuon
+    store_plots["histos"][f"{overlay_out_name}_zgen"]=h_zgen
+    store_plots["histos"][f"{overlay_out_name}_legend"]=leg_overlay
+    c_overlay.Update()
+    c_overlay.SaveAs(f"{direc}/{overlay_out_name}.png")
+    return c,h,dz
+
+
+def plot_etaSAMuon_minus_etagen(data,vertex="prompt",show=False,showFit=True,fitColor=ROOT.kRed,nbins=120,xrange=(-1.2,1.2),title=None,out_name=None,overlay_out_name=None,overlay_title=None):
+    global _simple_plot_call_count
+    _simple_plot_call_count += 1
+    etaSAMuon_vals=data[f"samuon_eta_{vertex}_matched"]
+    etagen_vals=data[f"gen_eta_SAMuons_{vertex}_allmatched"]
+    if title is None:
+        title=f"#eta_{{SAMuon}}-#eta_{{gen}} ({vertex});#eta_{{SAMuon}}-#eta_{{gen}};Entries"
+    if out_name is None:
+        out_name=f"etaSAMuon_minus_etagen_{vertex}_1d"
+    if overlay_title is None:
+        overlay_title=f"#eta_{{SAMuon}} and #eta_{{gen}} distributions ({vertex});#eta;Entries"
+    if not show:
+        ROOT.gROOT.SetBatch(True)
+    if len(etaSAMuon_vals)!=len(etagen_vals):
+        raise ValueError("etaSAMuon_vals and etagen_vals must have the same length for event-by-event subtraction.")
+    direc=make_plot_dir("etaSAMuon_minus_etagen")
+    uniq=f"{out_name}_{_simple_plot_call_count}"
+    c=ROOT.TCanvas(f"c_{uniq}","",800,600)
+    h=ROOT.TH1F(f"h_{uniq}",title,nbins,xrange[0],xrange[1])
+    h.SetDirectory(0)
+    deta=np.array(etaSAMuon_vals,dtype=float)-np.array(etagen_vals,dtype=float)
+    for val in deta:
+        h.Fill(float(val))
+    h.SetStats(0)
+    h.SetLineWidth(2)
+    h.Draw("HIST")
+    fit=None
+    leg=None
+    if showFit:
+        fit=ROOT.TF1(f"fit_{uniq}","gaus",xrange[0],xrange[1])
+        fit.SetLineColor(fitColor)
+        fit.SetLineWidth(2)
+        h.Fit(fit,"RQS")
+        fit.Draw("SAME")
+        sigma=fit.GetParameter(2)
+        sigma_err=fit.GetParError(2)
+        leg=ROOT.TLegend(0.6,0.80,0.86,0.88)
+        leg.SetBorderSize(0)
+        leg.SetFillStyle(0)
+        leg.SetTextSize(0.035)
+        leg.AddEntry(fit, f"Gaussian fit", "L")
+        leg.AddEntry(0,f"#sigma = {sigma:.3g} #pm {sigma_err:.2g}","")
+        leg.Draw()
+    store_plots["canvas"][out_name]=c
+    store_plots["histos"][out_name]=h
+    if fit is not None:
+        store_plots["fits"][out_name]=fit
+    if leg is not None:
+        store_plots["histos"][f"{out_name}_legend"]=leg
+    c.Update()
+    c.SaveAs(f"{direc}/{out_name}.png")
+
+    if overlay_out_name is None:
+        overlay_out_name=f"{out_name}_SAMuon_vs_gen"
+    uniq_overlay=f"{overlay_out_name}_{_simple_plot_call_count}"
+    c_overlay=ROOT.TCanvas(f"c_{uniq_overlay}","",800,600)
+    h_etaSAMuon=ROOT.TH1F(f"h_etaSAMuon_{uniq_overlay}",overlay_title,nbins,xrange[0],xrange[1])
+    h_etagen=ROOT.TH1F(f"h_etagen_{uniq_overlay}",overlay_title,nbins,xrange[0],xrange[1])
+    h_etaSAMuon.SetDirectory(0)
+    h_etagen.SetDirectory(0)
+    for val in etaSAMuon_vals:
+        h_etaSAMuon.Fill(float(val))
+    for val in etagen_vals:
+        h_etagen.Fill(float(val))
+    h_etaSAMuon.SetStats(0)
+    h_etagen.SetStats(0)
+    h_etaSAMuon.SetLineWidth(2)
+    h_etagen.SetLineWidth(2)
+    h_etaSAMuon.SetLineColor(ROOT.kBlue+1)
+    h_etagen.SetLineColor(ROOT.kOrange+7)
+    max_y=max(h_etaSAMuon.GetMaximum(),h_etagen.GetMaximum())
+    h_etaSAMuon.SetMaximum(1.15*max_y if max_y>0 else 1.0)
+    h_etaSAMuon.Draw("HIST")
+    h_etagen.Draw("HIST SAME")
+    leg_overlay=ROOT.TLegend(0.62,0.78,0.88,0.88)
+    leg_overlay.SetBorderSize(0)
+    leg_overlay.SetFillStyle(0)
+    leg_overlay.AddEntry(h_etaSAMuon,"#eta_{SAMuon}","l")
+    leg_overlay.AddEntry(h_etagen,"#eta_{gen}","l")
+    leg_overlay.Draw()
+    store_plots["canvas"][overlay_out_name]=c_overlay
+    store_plots["histos"][f"{overlay_out_name}_etaSAMuon"]=h_etaSAMuon
+    store_plots["histos"][f"{overlay_out_name}_etagen"]=h_etagen
+    store_plots["histos"][f"{overlay_out_name}_legend"]=leg_overlay
+    c_overlay.Update()
+    c_overlay.SaveAs(f"{direc}/{overlay_out_name}.png")
+    return c,h,deta
+
+def plot_railZ0_eta(data,vertex="prompt",rails=(-16,15),show=False,nbins=120,xrange=(-1.2,1.2),title=None,out_name=None):
+    global _simple_plot_call_count
+    _simple_plot_call_count += 1
+    eta_vals=np.array(data[f"samuon_eta_{vertex}_matched"],dtype=float)
+    hwZ0_vals=np.array(data[f"samuon_hwZ0_{vertex}_matched"],dtype=float)
+    if len(eta_vals)!=len(hwZ0_vals):
+        raise ValueError("samuon_eta and samuon_hwZ0 arrays must be the same length.")
+    rail_set=set(int(r) for r in rails)
+    mask=np.array([int(round(z)) in rail_set for z in hwZ0_vals],dtype=bool)
+    rail_eta=eta_vals[mask]
+    n_total=len(eta_vals)
+    n_rail=len(rail_eta)
+    if title is None:
+        rails_str="/".join(str(int(r)) for r in rails)
+        title=f"#eta of SAMuons on z0 rail (hwZ0={rails_str}, {vertex});#eta_{{SAMuon}};Entries"
+    if out_name is None:
+        out_name=f"railZ0_eta_{vertex}_1d"
+    if not show:
+        ROOT.gROOT.SetBatch(True)
+    direc=make_plot_dir("railZ0_eta")
+    uniq=f"{out_name}_{_simple_plot_call_count}"
+    c=ROOT.TCanvas(f"c_{uniq}","",800,600)
+    h=ROOT.TH1F(f"h_{uniq}",title,nbins,xrange[0],xrange[1])
+    h.SetDirectory(0)
+    for val in rail_eta:
+        h.Fill(float(val))
+    h.SetStats(0)
+    h.SetLineWidth(2)
+    h.SetLineColor(ROOT.kRed+1)
+    h.Draw("HIST")
+    frac=(n_rail/n_total) if n_total>0 else 0.0
+    leg=ROOT.TLegend(0.5,0.78,0.88,0.88)
+    leg.SetBorderSize(0)
+    leg.SetFillStyle(0)
+    leg.SetTextSize(0.032)
+    leg.AddEntry(0,f"rail muons: {n_rail}/{n_total} ({100*frac:.1f}%)","")
+    leg.Draw()
+    store_plots["canvas"][out_name]=c
+    store_plots["histos"][out_name]=h
+    store_plots["histos"][f"{out_name}_legend"]=leg
+    c.Update()
+    c.SaveAs(f"{direc}/{out_name}.png")
+    return c,h,rail_eta
+
+def count_z0_rail(data,vertex,rails=(-16,15)):
+    hwZ0_vals=np.array(data[f"samuon_hwZ0_{vertex}_matched"],dtype=float)
+    rail_set=set(int(r) for r in rails)
+    mask=np.array([int(round(z)) in rail_set for z in hwZ0_vals],dtype=bool)
+    return mask,int(mask.sum()),len(hwZ0_vals)

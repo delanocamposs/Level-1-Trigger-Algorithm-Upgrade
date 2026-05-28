@@ -80,6 +80,17 @@ def event_loop(event_num, thetaDigi, eta_max, local_dataset=None,eos_dataset=Non
     gen_eta_KMTFTracks_allmatched_glob=[]
     kmtf_kslope_KMTFTracks_matched_glob=[]
 
+    samuon_eta_prompt_matched_glob=[]
+    gen_eta_SAMuons_prompt_allmatched_glob=[]
+    samuon_z_prompt_matched_glob=[]
+    gen_vz_SAMuons_prompt_matched_glob=[]
+    samuon_eta_displaced_matched_glob=[]
+    gen_eta_SAMuons_displaced_allmatched_glob=[]
+    samuon_z_displaced_matched_glob=[]
+    gen_vz_SAMuons_displaced_matched_glob=[]
+    samuon_hwZ0_prompt_matched_glob=[]
+    samuon_hwZ0_displaced_matched_glob=[]
+
     for i, event in enumerate(events):
         if i>=event_num:
             break
@@ -209,6 +220,12 @@ def event_loop(event_num, thetaDigi, eta_max, local_dataset=None,eos_dataset=Non
 
         SAMuons_phEta_displaced_event=get_SAMuons_phEta(event, "displaced",pt_min=10,eta_max=eta_max)
         SAMuons_phEta_prompt_event=get_SAMuons_phEta(event, "prompt",pt_min=10,eta_max=eta_max)
+        SAMuons_phPhi_displaced_event=get_SAMuons_phPhi(event, "displaced",pt_min=10,eta_max=eta_max)
+        SAMuons_phPhi_prompt_event=get_SAMuons_phPhi(event, "prompt",pt_min=10,eta_max=eta_max)
+        SAMuons_phZ0_displaced_event=get_SAMuons_phZ0(event, "displaced",pt_min=10,eta_max=eta_max)
+        SAMuons_phZ0_prompt_event=get_SAMuons_phZ0(event, "prompt",pt_min=10,eta_max=eta_max)
+        SAMuons_hwZ0_displaced_event=get_SAMuons_hwZ0(event, "displaced",pt_min=10,eta_max=eta_max)
+        SAMuons_hwZ0_prompt_event=get_SAMuons_hwZ0(event, "prompt",pt_min=10,eta_max=eta_max)
         gen_pt_SAMuons_matched_displaced_event=[]
         gen_pt_SAMuons_matched_prompt_event=[]
 
@@ -221,6 +238,8 @@ def event_loop(event_num, thetaDigi, eta_max, local_dataset=None,eos_dataset=Non
 
         match_idx_SAMuons_displaced=match_indices_global(gen_eta_event, SAMuons_phEta_displaced_event)
         match_idx_SAMuons_prompt=match_indices_global(gen_eta_event, SAMuons_phEta_prompt_event)
+        match_idx_SAMuons_prompt_dr=match_indices_global_tracks(gen_eta_event, gen_phi_event, SAMuons_phEta_prompt_event, SAMuons_phPhi_prompt_event, max_dr=0.6)
+        match_idx_SAMuons_displaced_dr=match_indices_global_tracks(gen_eta_event, gen_phi_event, SAMuons_phEta_displaced_event, SAMuons_phPhi_displaced_event, max_dr=0.6)
 
         for mu_idx, KMTFTrack_idx in enumerate(match_idx_KMTFTracks):
             if KMTFTrack_idx is not None:
@@ -251,6 +270,22 @@ def event_loop(event_num, thetaDigi, eta_max, local_dataset=None,eos_dataset=Non
             if SAMuons_idx is not None:
                 gen_pt_SAMuons_matched_prompt_event.append(gen_pt_event[mu_idx])
         gen_pt_SAMuons_matched_prompt_glob.extend(gen_pt_SAMuons_matched_prompt_event)
+
+        for mu_idx, SAMuons_idx in enumerate(match_idx_SAMuons_prompt_dr):
+            if SAMuons_idx is not None:
+                samuon_eta_prompt_matched_glob.append(SAMuons_phEta_prompt_event[SAMuons_idx])
+                gen_eta_SAMuons_prompt_allmatched_glob.append(gen_eta_event[mu_idx])
+                samuon_z_prompt_matched_glob.append(SAMuons_phZ0_prompt_event[SAMuons_idx])
+                gen_vz_SAMuons_prompt_matched_glob.append(gen_vz_event[mu_idx])
+                samuon_hwZ0_prompt_matched_glob.append(SAMuons_hwZ0_prompt_event[SAMuons_idx])
+
+        for mu_idx, SAMuons_idx in enumerate(match_idx_SAMuons_displaced_dr):
+            if SAMuons_idx is not None:
+                samuon_eta_displaced_matched_glob.append(SAMuons_phEta_displaced_event[SAMuons_idx])
+                gen_eta_SAMuons_displaced_allmatched_glob.append(gen_eta_event[mu_idx])
+                samuon_z_displaced_matched_glob.append(SAMuons_phZ0_displaced_event[SAMuons_idx])
+                gen_vz_SAMuons_displaced_matched_glob.append(gen_vz_event[mu_idx])
+                samuon_hwZ0_displaced_matched_glob.append(SAMuons_hwZ0_displaced_event[SAMuons_idx])
 
         for mu_idx in range(len(gen_pt_event)):
             if gen_pt_event[mu_idx]>25:
@@ -307,6 +342,16 @@ def event_loop(event_num, thetaDigi, eta_max, local_dataset=None,eos_dataset=Non
         "gen_vz_KMTFTracks_matched":gen_vz_KMTFTracks_matched_glob,
         "kmtf_eta_KMTFTracks_matched":kmtf_eta_KMTFTracks_matched_glob,
         "gen_eta_KMTFTracks_allmatched":gen_eta_KMTFTracks_allmatched_glob,
-        "kmtf_kslope_KMTFTracks_matched":kmtf_kslope_KMTFTracks_matched_glob
+        "kmtf_kslope_KMTFTracks_matched":kmtf_kslope_KMTFTracks_matched_glob,
+        "samuon_eta_prompt_matched":samuon_eta_prompt_matched_glob,
+        "gen_eta_SAMuons_prompt_allmatched":gen_eta_SAMuons_prompt_allmatched_glob,
+        "samuon_z_prompt_matched":samuon_z_prompt_matched_glob,
+        "gen_vz_SAMuons_prompt_matched":gen_vz_SAMuons_prompt_matched_glob,
+        "samuon_eta_displaced_matched":samuon_eta_displaced_matched_glob,
+        "gen_eta_SAMuons_displaced_allmatched":gen_eta_SAMuons_displaced_allmatched_glob,
+        "samuon_z_displaced_matched":samuon_z_displaced_matched_glob,
+        "gen_vz_SAMuons_displaced_matched":gen_vz_SAMuons_displaced_matched_glob,
+        "samuon_hwZ0_prompt_matched":samuon_hwZ0_prompt_matched_glob,
+        "samuon_hwZ0_displaced_matched":samuon_hwZ0_displaced_matched_glob
         }
     return return_dict
