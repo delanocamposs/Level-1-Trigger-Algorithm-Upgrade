@@ -234,9 +234,24 @@ def get_SAMuons_hwZ0(event, vertex, pt_min=0, pt_max=1000, eta_max=1.3):
     val=[float(g.hwZ0()) for g in SAMuonshandle.product() if abs(g.phEta())<eta_max and pt_min<g.phPt()<pt_max]
     return val
 
+def get_SAMuons_hwD0(event, vertex, pt_min=0, pt_max=1000, eta_max=1.3):
+    event.getByLabel("gmtKMTFMuons",vertex,"L1P2GT2", SAMuonshandle)
+    val=[float(g.hwD0()) for g in SAMuonshandle.product() if abs(g.phEta())<eta_max and pt_min<g.phPt()<pt_max]
+    return val
+
 def get_SAMuons_hwPhi(event, vertex, pt_min=0, pt_max=1000, eta_max=1.3):
     event.getByLabel("gmtKMTFMuons",vertex,"L1P2GT2", SAMuonshandle)
     val=[float(g.hwPhi()) for g in SAMuonshandle.product() if abs(g.phEta())<eta_max and pt_min<g.phPt()<pt_max]
+    return val
+
+def get_KMTFTrack_dxy(event, thetaDigi=True, pt_min=0, pt_max=1000, eta_max=1.3):
+    event.getByLabel("gmtKMTFMuons", "kmtfTracks", "L1P2GT2", Trackshandle)
+    tracks = Trackshandle.product()
+    if thetaDigi:
+        tracks = [g for g in tracks if any(s.etaQuality() > 0 for s in g.stubs()) and abs(g.eta()) < eta_max and pt_min < g.pt() < pt_max]
+    else:
+        tracks = [g for g in tracks if abs(g.eta()) < eta_max and pt_min < g.pt() < pt_max]
+    val = [float(g.dxy()) for g in tracks]
     return val
 
 def get_KMTFTrack_zVtx(event, thetaDigi=True, pt_min=0, pt_max=1000, eta_max=1.3):

@@ -1289,7 +1289,7 @@ def plot_zSAMuon_minus_zgen(data,vertex="prompt",show=False,showFit=True,fitColo
     h_zSAMuon.SetDirectory(0)
     h_zgen.SetDirectory(0)
     for val in zSAMuon_vals:
-        h_zSAMuon.Fill(float(4*val))
+        h_zSAMuon.Fill(float(16*val))
     for val in zgen_vals:
         h_zgen.Fill(float(val))
     h_zSAMuon.SetStats(0)
@@ -1454,3 +1454,281 @@ def count_z0_rail(data,vertex,rails=(-16,15)):
     rail_set=set(int(r) for r in rails)
     mask=np.array([int(round(z)) in rail_set for z in hwZ0_vals],dtype=bool)
     return mask,int(mask.sum()),len(hwZ0_vals)
+
+def plot_overlay_prompt_displaced_SAMuon(prompt_data, displaced_data1, displaced_data2=None, displaced_data3=None, minbias_data=None, vertex="prompt", show=False, n_bins=50, xrange=(-30, 30), z_scale=1.0, title=None, color_prompt=ROOT.kRed, color_displaced=ROOT.kBlue, color_minbias=ROOT.kGreen+2, out_name=None):
+    global _zvtx_call_count
+    _zvtx_call_count += 1
+    suf = _zvtx_call_count
+    if not show:
+        ROOT.gROOT.SetBatch(True)
+    direc = make_plot_dir("samuon_z0_distribution")
+    if title is None:
+        title = f"Normalized SAMuon z_{{0}} ({vertex});z_{{0}} [cm];a.u."
+    if out_name is None:
+        out_name = f"samuon_z0_prompt_displaced_{vertex}"
+    key = f"samuon_z_all_{vertex}"
+    z_bins = tuple(np.linspace(xrange[0], xrange[1], n_bins + 1))
+    bins = array('d', z_bins)
+
+    hPrompt = ROOT.TH1D(f"hPrompt_SA_{suf}", title, n_bins, bins)
+    hDisp   = ROOT.TH1D(f"hDisp_SA_{suf}",   title, n_bins, bins)
+    hMB     = ROOT.TH1D(f"hMB_SA_{suf}",     title, n_bins, bins)
+    hPrompt.SetDirectory(0); hDisp.SetDirectory(0); hMB.SetDirectory(0)
+
+    for z in prompt_data[key]:
+        hPrompt.Fill(z_scale*float(z))
+    for z in displaced_data1[key]:
+        hDisp.Fill(z_scale*float(z))
+    if displaced_data2 is not None:
+        for z in displaced_data2[key]:
+            hDisp.Fill(z_scale*float(z))
+    if displaced_data3 is not None:
+        for z in displaced_data3[key]:
+            hDisp.Fill(z_scale*float(z))
+    if minbias_data is not None:
+        for z in minbias_data[key]:
+            hMB.Fill(z_scale*float(z))
+
+    hPrompt.SetLineColor(color_prompt);   hPrompt.SetMarkerColor(color_prompt);   hPrompt.SetMarkerStyle(20); hPrompt.SetLineWidth(2)
+    hDisp.SetLineColor(color_displaced);  hDisp.SetMarkerColor(color_displaced);  hDisp.SetMarkerStyle(21); hDisp.SetLineWidth(2)
+    hMB.SetLineColor(color_minbias);      hMB.SetMarkerColor(color_minbias);      hMB.SetMarkerStyle(22); hMB.SetLineWidth(2)
+
+    if hPrompt.Integral() > 0: hPrompt.Scale(1.0 / hPrompt.Integral())
+    if hDisp.Integral()   > 0: hDisp.Scale(1.0 / hDisp.Integral())
+    if hMB.Integral()     > 0: hMB.Scale(1.0 / hMB.Integral())
+
+    hPrompt.SetStats(0); hDisp.SetStats(0); hMB.SetStats(0)
+
+    gP = ROOT.TF1(f"gP_SA_{suf}", "gaus", xrange[0], xrange[1])
+    gD = ROOT.TF1(f"gD_SA_{suf}", "gaus", xrange[0], xrange[1])
+    gP.SetLineColor(color_prompt);    gP.SetLineWidth(2); gP.SetLineStyle(2)
+    gD.SetLineColor(color_displaced); gD.SetLineWidth(2); gD.SetLineStyle(2)
+    hPrompt.Fit(gP, "RQ")
+    hDisp.Fit(gD, "RQ")
+
+    c = ROOT.TCanvas(f"c_samuon_z0_{suf}", "", 800, 600)
+
+    histos_to_draw = [hPrompt, hDisp]
+    if minbias_data is not None:
+        histos_to_draw.append(hMB)
+    y_max = max(h.GetMaximum() for h in histos_to_draw) * 1.4
+    hPrompt.GetYaxis().SetRangeUser(0, y_max)
+
+    hPrompt.Draw("HIST")
+    hDisp.Draw("HIST SAME")
+    if minbias_data is not None:
+        hMB.Draw("HIST SAME")
+
+    leg = ROOT.TLegend(0.58, 0.62, 0.89, 0.88)
+    leg.SetBorderSize(0); leg.SetFillStyle(0)
+    leg.SetTextSize(0.035)
+    leg.AddEntry(hPrompt, "DY + Jets",          "l")
+    leg.AddEntry(hDisp,   "Displaced Muon Gun", "l")
+    if minbias_data is not None:
+        leg.AddEntry(hMB, "MinBias",            "l")
+    leg.Draw()
+
+    print("sigma prompt", gP.GetParameter(2))
+    print("sigma displaced", gD.GetParameter(2))
+
+    c.SaveAs(f"{direc}/{out_name}.png")
+    f = ROOT.TFile(f"{direc}/{out_name}.root", "RECREATE")
+    hPrompt.Write(); hDisp.Write(); hMB.Write(); gP.Write(); gD.Write(); c.Write(); f.Close()
+
+    store_plots["canvas"][f"samuon_z0_prompt_displaced_{vertex}_{suf}"] = c
+    store_plots["histos"][f"hPrompt_SAz0_{vertex}_{suf}"] = hPrompt
+    store_plots["histos"][f"hDisp_SAz0_{vertex}_{suf}"]   = hDisp
+    store_plots["histos"][f"hMB_SAz0_{vertex}_{suf}"]     = hMB
+    store_plots["histos"][f"leg_SAz0_{vertex}_{suf}"]     = leg
+    store_plots["fits"][f"gP_SAz0_{vertex}_{suf}"]        = gP
+    store_plots["fits"][f"gD_SAz0_{vertex}_{suf}"]        = gD
+
+    return c, hPrompt, hDisp, hMB, gP, gD
+
+
+def _fill_hwD0_vs_hwZ0_TH2(datasets,legend_label,out_name,title,abs_val,show=False,xrange=None,yrange=None,xbins=100,ybins=100):
+    global _simple_plot_call_count
+    _simple_plot_call_count += 1
+    z_list=[]
+    d_list=[]
+    for data in datasets:
+        z=np.array(data["samuon_hwZ0_displaced"],dtype=float)
+        d=np.array(data["samuon_hwD0_displaced"],dtype=float)
+        if len(z)!=len(d):
+            raise ValueError("displaced hwZ0 and hwD0 arrays must be the same length.")
+        z_list.append(z)
+        d_list.append(d)
+    hwZ0=np.concatenate(z_list) if z_list else np.array([],dtype=float)
+    hwD0=np.concatenate(d_list) if d_list else np.array([],dtype=float)
+    if not show:
+        ROOT.gROOT.SetBatch(True)
+    z_for_range=hwZ0 if len(hwZ0)>0 else np.array([0.0])
+    d_for_range=hwD0 if len(hwD0)>0 else np.array([0.0])
+    if xrange is None:
+        zmin,zmax=float(z_for_range.min()),float(z_for_range.max())
+        zpad=0.05*(zmax-zmin) if zmax>zmin else 1.0
+        xrange=(zmin-zpad,zmax+zpad)
+    if yrange is None:
+        dmin,dmax=float(d_for_range.min()),float(d_for_range.max())
+        dpad=0.05*(dmax-dmin) if dmax>dmin else 1.0
+        yrange=(dmin-dpad,dmax+dpad)
+    direc=make_plot_dir("hwD0_vs_hwZ0_SAMuon")
+    uniq=f"{out_name}_{_simple_plot_call_count}"
+    c=ROOT.TCanvas(f"c_{uniq}","",800,600)
+    c.SetLeftMargin(0.13)
+    c.SetRightMargin(0.15)
+    h=ROOT.TH2D(f"h_{uniq}",title,xbins,xrange[0],xrange[1],ybins,yrange[0],yrange[1])
+    h.SetDirectory(0)
+    h.SetStats(0)
+    for z,d in zip(hwZ0,hwD0):
+        if abs_val == True:
+            h.Fill(float(abs(z)),float(abs(d)))
+        else:
+            h.Fill(float(z),float(d))
+    h.Draw("COLZ")
+    leg=ROOT.TLegend(0.50,0.80,0.88,0.88)
+    leg.SetBorderSize(0)
+    leg.SetFillStyle(0)
+    leg.SetTextSize(0.032)
+    leg.AddEntry(0,legend_label,"")
+    #leg.Draw()
+    store_plots["canvas"][out_name]=c
+    store_plots["histos"][out_name]=h
+    store_plots["histos"][f"{out_name}_legend"]=leg
+    c.Update()
+    c.SaveAs(f"{direc}/{out_name}.png")
+    return c,h
+
+
+def plot_hwD0_vs_hwZ0_SAMuon(prompt_data=None,disp_data1=None,disp_data2=None,disp_data3=None,MB_data=None,show=False,xrange=None,yrange=None,xbins=100,ybins=100, abs_val=False):
+    results={}
+    if prompt_data is not None:
+        results["prompt"]=_fill_hwD0_vs_hwZ0_TH2(
+            [prompt_data],"Prompt DY + Jets","hwD0_vs_hwZ0_SAMuon_prompt_2d",
+            "Prompt SAMuon hwD0 vs hwZ0;hwZ0;hwD0",abs_val=abs_val,
+            show=show,xrange=xrange,yrange=yrange,xbins=xbins,ybins=ybins)
+    disp_datasets=[d for d in (disp_data1,disp_data2,disp_data3) if d is not None]
+    if disp_datasets:
+        results["displaced"]=_fill_hwD0_vs_hwZ0_TH2(
+            disp_datasets,"Displaced Muon Gun sample","hwD0_vs_hwZ0_SAMuon_displaced_2d",
+            "Displaced SAMuon hwD0 vs hwZ0;hwZ0;hwD0", abs_val=abs_val,
+            show=show,xrange=xrange,yrange=yrange,xbins=xbins,ybins=ybins)
+    if MB_data is not None:
+        results["minbias"]=_fill_hwD0_vs_hwZ0_TH2(
+            [MB_data],"MinBias","hwD0_vs_hwZ0_SAMuon_minbias_2d",
+            "MinBias SAMuon hwD0 vs hwZ0;hwZ0;hwD0",abs_val=abs_val,
+            show=show,xrange=xrange,yrange=yrange,xbins=xbins,ybins=ybins)
+    return results
+
+def _fill_dxy_vs_z_KMTF_TH2(datasets,legend_label,out_name,title,show=False,xrange=None,yrange=None,xbins=100,ybins=100):
+    global _simple_plot_call_count
+    _simple_plot_call_count += 1
+    z_list=[]
+    d_list=[]
+    for data in datasets:
+        z=np.array(data["kmtf_zvtx"],dtype=float)
+        d=np.array(data["kmtf_dxy"],dtype=float)
+        if len(z)!=len(d):
+            raise ValueError("kmtf_zvtx and kmtf_dxy arrays must be the same length.")
+        z_list.append(z)
+        d_list.append(d)
+    z_vals=np.concatenate(z_list) if z_list else np.array([],dtype=float)
+    dxy_vals=np.concatenate(d_list) if d_list else np.array([],dtype=float)
+    if not show:
+        ROOT.gROOT.SetBatch(True)
+    z_for_range=z_vals if len(z_vals)>0 else np.array([0.0])
+    d_for_range=dxy_vals if len(dxy_vals)>0 else np.array([0.0])
+    if xrange is None:
+        zmin,zmax=float(z_for_range.min()),float(z_for_range.max())
+        zpad=0.05*(zmax-zmin) if zmax>zmin else 1.0
+        xrange=(zmin-zpad,zmax+zpad)
+    if yrange is None:
+        dmin,dmax=float(d_for_range.min()),float(d_for_range.max())
+        dpad=0.05*(dmax-dmin) if dmax>dmin else 1.0
+        yrange=(dmin-dpad,dmax+dpad)
+    direc=make_plot_dir("dxy_vs_z_KMTFTrack")
+    uniq=f"{out_name}_{_simple_plot_call_count}"
+    c=ROOT.TCanvas(f"c_{uniq}","",800,600)
+    c.SetLeftMargin(0.13)
+    c.SetRightMargin(0.15)
+    h=ROOT.TH2D(f"h_{uniq}",title,xbins,xrange[0],xrange[1],ybins,yrange[0],yrange[1])
+    h.SetDirectory(0)
+    h.SetStats(0)
+    for z,d in zip(z_vals,dxy_vals):
+        h.Fill(float(z),float(d))
+    h.Draw("COLZ")
+    leg=ROOT.TLegend(0.50,0.80,0.88,0.88)
+    leg.SetBorderSize(0)
+    leg.SetFillStyle(0)
+    leg.SetTextSize(0.032)
+    leg.AddEntry(0,legend_label,"")
+    leg.Draw()
+    store_plots["canvas"][out_name]=c
+    store_plots["histos"][out_name]=h
+    store_plots["histos"][f"{out_name}_legend"]=leg
+    c.Update()
+    c.SaveAs(f"{direc}/{out_name}.png")
+    return c,h
+
+def plot_dxy_vs_z_KMTFTrack(prompt_data=None,disp_data1=None,disp_data2=None,disp_data3=None,MB_data=None,
+                            show=False,xrange=None,yrange=None,xbins=100,ybins=100):
+    results={}
+    if prompt_data is not None:
+        results["prompt"]=_fill_dxy_vs_z_KMTF_TH2(
+            [prompt_data],"DY + Jets","dxy_vs_z_KMTFTrack_prompt_2d",
+            "Prompt KMTFTrack dxy vs z;z;dxy",
+            show=show,xrange=xrange,yrange=yrange,xbins=xbins,ybins=ybins)
+    disp_datasets=[d for d in (disp_data1,disp_data2,disp_data3) if d is not None]
+    if disp_datasets:
+        results["displaced"]=_fill_dxy_vs_z_KMTF_TH2(
+            disp_datasets,"Displaced Muon Gun sample","dxy_vs_z_KMTFTrack_displaced_2d",
+            "Displaced KMTFTrack dxy vs z;z;dxy",
+            show=show,xrange=xrange,yrange=yrange,xbins=xbins,ybins=ybins)
+    if MB_data is not None:
+        results["minbias"]=_fill_dxy_vs_z_KMTF_TH2(
+            [MB_data],"MinBias","dxy_vs_z_KMTFTrack_minbias_2d",
+            "MinBias KMTFTrack dxy vs z;z;dxy",
+            show=show,xrange=xrange,yrange=yrange,xbins=xbins,ybins=ybins)
+    return results
+
+def plot_eff_vs_pT_SAMuon_d0z0(data,d0_cut=10,z0_cut=5,show=False,pt_bins=(0,5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100,105,110,115,120),title=None,color=ROOT.kBlue):
+    if not show:
+        ROOT.gROOT.SetBatch(True)
+    direc=make_plot_dir("samuon_eff_vs_pt")
+    if title is None:
+        title=f"SAMuon efficiency vs gen p_{{T}} (|hwD0|>{d0_cut} OR |hwZ0|>{z0_cut});gen p_{{T}} [GeV];Efficiency"
+    gen_pt=np.array(data["gen_pt_SAMuons_displaced_drmatched"],dtype=float)
+    hwD0=np.array(data["samuon_hwD0_displaced_matched"],dtype=float)
+    hwZ0=np.array(data["samuon_hwZ0_displaced_matched"],dtype=float)
+    if not (len(gen_pt)==len(hwD0)==len(hwZ0)):
+        raise ValueError("matched gen_pt, hwD0, hwZ0 arrays must be the same length.")
+    mask=(np.abs(hwD0)>d0_cut)|(np.abs(hwZ0)>z0_cut)
+    num_pt=gen_pt[mask]
+    bins=array('d',pt_bins)
+    hDen=ROOT.TH1D("hDen_samuon",";gen p_{T} [GeV];Efficiency",len(pt_bins)-1,bins)
+    hNum=ROOT.TH1D("hNum_samuon",";gen p_{T} [GeV];Efficiency",len(pt_bins)-1,bins)
+    hDen.SetDirectory(0);hNum.SetDirectory(0)
+    for pt in data["gen_pt_unmatched"]:
+        hDen.Fill(float(pt))
+    for pt in num_pt:
+        hNum.Fill(float(pt))
+    eff=ROOT.TEfficiency(hNum,hDen)
+    eff.SetName("eff_samuon_d0z0")
+    eff.SetTitle(title)
+    eff.SetLineColor(color);eff.SetMarkerColor(color);eff.SetMarkerStyle(20)
+    c=ROOT.TCanvas("c_samuon_eff_d0z0","",800,600)
+    eff.Draw("AP")
+    leg=ROOT.TLegend(0.40,0.20,0.88,0.32)
+    leg.SetBorderSize(0);leg.SetFillStyle(0);leg.SetTextSize(0.030)
+    leg.AddEntry(eff,"displaced SAMuon","lp")
+    leg.AddEntry(0,f"|hwD0|>{d0_cut} OR |hwZ0|>{z0_cut} ({int(mask.sum())}/{len(mask)})","")
+    leg.Draw()
+    c.SaveAs(f"{direc}/samuon_eff_vs_pt_d0z0.png")
+    f=ROOT.TFile("samuon_eff_vs_pt_d0z0.root","RECREATE")
+    hDen.Write();hNum.Write();eff.Write();c.Write();f.Close()
+    store_plots["canvas"]["samuon_eff_vs_pt_d0z0"]=c
+    store_plots["histos"]["hDen_samuon_d0z0"]=hDen
+    store_plots["histos"]["hNum_samuon_d0z0"]=hNum
+    store_plots["histos"]["eff_samuon_d0z0"]=eff
+    store_plots["histos"]["eff_samuon_d0z0_legend"]=leg
+    return c,eff
