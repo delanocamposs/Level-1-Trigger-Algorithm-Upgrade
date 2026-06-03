@@ -15,7 +15,7 @@ ZRES_CONV=65536.0/1500.0
 KRES_CONV=65536.0/2
 CURV_CONV=(1<<15)/1.25
 
-def event_loop(event_num, thetaDigi, eta_max, local_dataset=None,eos_dataset=None, conv_z=False, conv_k=False):
+def event_loop(event_num, thetaDigi, eta_max, pt_min, local_dataset=None,eos_dataset=None, conv_z=False, conv_k=False):
     if local_dataset is None and eos_dataset is None:
         print("you have to choose a dataset to process. set local_dataset or eos_dataset")
     if eos_dataset is not None:
@@ -61,6 +61,8 @@ def event_loop(event_num, thetaDigi, eta_max, local_dataset=None,eos_dataset=Non
     #global arrays outside event loop for KMTF muon information.
     #adding unmatched pt dictionary. this means gen muon pt straight from gen particles without any matching algo to stubs. no station split because genparticles doesnt know about stations.
     gen_pt_unmatched_glob=[]
+    gen_eta_unmatched_full_glob=[]
+    gen_d3d_unmatched_full_glob=[]
     gen_pt_KMTFTracks_matched_glob=[]
     gen_pt_KMTF_matched_displaced_glob=[]
     gen_pt_KMTF_matched_prompt_glob=[]
@@ -76,6 +78,8 @@ def event_loop(event_num, thetaDigi, eta_max, local_dataset=None,eos_dataset=Non
     kmtf_zvtx_glob = []
     kmtf_dxy_glob = []
     samuon_hwD0_displaced_matched_glob=[]
+    samuon_phPt_displaced_matched_glob=[]
+    gen_d3d_SAMuons_displaced_drmatched_glob=[]
     gen_pt_SAMuons_displaced_drmatched_glob=[]
 
     samuon_z_all_prompt_glob = []
@@ -100,25 +104,30 @@ def event_loop(event_num, thetaDigi, eta_max, local_dataset=None,eos_dataset=Non
     samuon_hwZ0_displaced_glob=[]
     samuon_hwD0_prompt_glob=[]
     samuon_hwD0_displaced_glob=[]
+    samuon_maxpt_event_prompt_glob=[]
+    samuon_maxpt_event_displaced_glob=[]
+    n_events_processed=0
 
     for i, event in enumerate(events):
         if i>=event_num:
             break
         event.getByLabel("dtTriggerPhase2PrimitiveDigis", "", "L1P2GT", thetahandle)
+        n_events_processed+=1
         
         #this container is needed for stub information because the C++ class which defines the dataformat is not iterable as thetahandle.product(). need to get container then iterate later in loop
         container=thetahandle.product().getContainer()
     
         #grab vector of gen muon pT, eta, vz,vy,vx, etc per event
         #also save a gen_z_event which is station-dependent. filled later based on matching (genParticles has no z information - must build the z).
-        gen_pt_event=get_gen_muons_pt(event,pt_min=3,pt_max=1000,eta_max=eta_max)
-        gen_eta_event=get_gen_muons_eta(event,pt_min=3,pt_max=1000,eta_max=eta_max)
-        gen_phi_event=get_gen_muons_phi(event,pt_min=3,pt_max=1000,eta_max=eta_max)
-        gen_vz_event=get_gen_muons_vz(event,pt_min=3,pt_max=1000,eta_max=eta_max)
-        gen_vy_event=get_gen_muons_vy(event,pt_min=3,pt_max=1000,eta_max=eta_max)
-        gen_vx_event=get_gen_muons_vx(event,pt_min=3,pt_max=1000,eta_max=eta_max)
+        gen_pt_event=get_gen_muons_pt(event,pt_min=pt_min,pt_max=1000,eta_max=eta_max)
+        gen_eta_event=get_gen_muons_eta(event,pt_min=pt_min,pt_max=1000,eta_max=eta_max)
+        gen_phi_event=get_gen_muons_phi(event,pt_min=pt_min,pt_max=1000,eta_max=eta_max)
+        gen_vz_event=get_gen_muons_vz(event,pt_min=pt_min,pt_max=1000,eta_max=eta_max)
+        gen_vy_event=get_gen_muons_vy(event,pt_min=pt_min,pt_max=1000,eta_max=eta_max)
+        gen_vx_event=get_gen_muons_vx(event,pt_min=pt_min,pt_max=1000,eta_max=eta_max)
         gen_vr_event=np.sqrt((np.array(gen_vx_event))**2+(np.array(gen_vy_event))**2)
-        gen_curv_event=get_gen_muons_curv(event, pt_min=3, pt_max=1000,eta_max=eta_max)
+        gen_d3d_event=np.sqrt((np.array(gen_vx_event))**2+(np.array(gen_vy_event))**2+(np.array(gen_vz_event))**2)
+        gen_curv_event=get_gen_muons_curv(event, pt_min=pt_min, pt_max=1000,eta_max=eta_max)
     
         if len(gen_pt_event)!=len(gen_eta_event):
             print("ERROR: size mismatch")
@@ -210,38 +219,47 @@ def event_loop(event_num, thetaDigi, eta_max, local_dataset=None,eos_dataset=Non
             mu_id_glob[st].extend(np.array(mu_id_by_st[st])) 
 
 
-        kmtf_zvtx_event = get_KMTFTrack_zVtx(event, thetaDigi, pt_min=3,eta_max=eta_max)
+        kmtf_zvtx_event = get_KMTFTrack_zVtx(event, thetaDigi, pt_min=pt_min,eta_max=eta_max)
         kmtf_zvtx_glob.extend(kmtf_zvtx_event)
-        kmtf_dxy_event = get_KMTFTrack_dxy(event, thetaDigi, pt_min=3,eta_max=eta_max)
+        kmtf_dxy_event = get_KMTFTrack_dxy(event, thetaDigi, pt_min=pt_min,eta_max=eta_max)
         kmtf_dxy_glob.extend(kmtf_dxy_event)
         #this loop will attempt to match genmuons to KMTF muons if eta<eta_max and pT>20GeV. used for efficiency plot. 
         #this piece of the code is used to return information about efficiency vs pT in "===================".
         #putting it at the end since it uses different collection (l1tKMTFGmt vs L1Phase2MuDTThContainer). both studies use genParticles however.
 #=====================================================================================================================
         gen_pt_unmatched_glob.extend(np.array(gen_pt_event)) #add unmatched gen muon pt to global array WITHOUT 20 GEV PT CUT! denom of efficiency curve. 
+        gen_eta_unmatched_full_glob.extend(np.array(gen_eta_event)) #gen eta aligned 1:1 with gen_pt_unmatched_glob (same selection, no pT cut). used for plot-time eta cut on the denom.
+        gen_d3d_unmatched_full_glob.extend(np.array(gen_d3d_event)) #gen d3d aligned 1:1 with gen_pt_unmatched_glob. denom x-axis for the efficiency-vs-d3d plot.
+        SAMuons_phPt_prompt_rate_event=get_SAMuons_phPt(event,"prompt",pt_min=pt_min,eta_max=eta_max)
+        SAMuons_phPt_displaced_rate_event=get_SAMuons_phPt(event,"displaced",pt_min=pt_min,eta_max=eta_max)
+        if len(SAMuons_phPt_prompt_rate_event)>0:
+            samuon_maxpt_event_prompt_glob.append(max(SAMuons_phPt_prompt_rate_event))
+        if len(SAMuons_phPt_displaced_rate_event)>0:
+            samuon_maxpt_event_displaced_glob.append(max(SAMuons_phPt_displaced_rate_event))
 
-        KMTFTrack_eta_event=get_KMTFTrack_eta(event, thetaDigi, pt_min=3, eta_max=eta_max)
-        KMTFTrack_phi_event=get_KMTFTrack_phi(event, thetaDigi,pt_min=3, eta_max=eta_max)
-        KMTFTrack_zvtx_event=get_KMTFTrack_zVtx(event, thetaDigi, pt_min=3,eta_max=eta_max)
-        KMTFTrack_kslope_event=get_KMTFTrack_kSlope(event, thetaDigi, pt_min=3,eta_max=eta_max)
+        KMTFTrack_eta_event=get_KMTFTrack_eta(event, thetaDigi, pt_min=pt_min, eta_max=eta_max)
+        KMTFTrack_phi_event=get_KMTFTrack_phi(event, thetaDigi,pt_min=pt_min, eta_max=eta_max)
+        KMTFTrack_zvtx_event=get_KMTFTrack_zVtx(event, thetaDigi, pt_min=pt_min,eta_max=eta_max)
+        KMTFTrack_kslope_event=get_KMTFTrack_kSlope(event, thetaDigi, pt_min=pt_min,eta_max=eta_max)
         gen_pt_KMTFTracks_matched_event=[]
-        KMTF_phEta_displaced_event=get_KMTF_muons_phEta(event, "displaced",pt_min=3,eta_max=eta_max)
-        KMTF_phEta_prompt_event=get_KMTF_muons_phEta(event, "prompt",pt_min=3,eta_max=eta_max)
+        KMTF_phEta_displaced_event=get_KMTF_muons_phEta(event, "displaced",pt_min=pt_min,eta_max=eta_max)
+        KMTF_phEta_prompt_event=get_KMTF_muons_phEta(event, "prompt",pt_min=pt_min,eta_max=eta_max)
         gen_pt_KMTF_matched_displaced_event=[]
         gen_pt_KMTF_matched_prompt_event=[]
 
-        SAMuons_phEta_displaced_event=get_SAMuons_phEta(event, "displaced",pt_min=3,eta_max=eta_max)
-        SAMuons_phEta_prompt_event=get_SAMuons_phEta(event, "prompt",pt_min=3,eta_max=eta_max)
-        SAMuons_phPhi_displaced_event=get_SAMuons_phPhi(event, "displaced",pt_min=3,eta_max=eta_max)
-        SAMuons_phPhi_prompt_event=get_SAMuons_phPhi(event, "prompt",pt_min=3,eta_max=eta_max)
-        SAMuons_phZ0_displaced_event=get_SAMuons_phZ0(event, "displaced",pt_min=3,eta_max=eta_max)
-        SAMuons_phZ0_prompt_event=get_SAMuons_phZ0(event, "prompt",pt_min=3,eta_max=eta_max)
+        SAMuons_phPt_displaced_event=get_SAMuons_phPt(event, "displaced",pt_min=pt_min,eta_max=eta_max)
+        SAMuons_phEta_displaced_event=get_SAMuons_phEta(event, "displaced",pt_min=pt_min,eta_max=eta_max)
+        SAMuons_phEta_prompt_event=get_SAMuons_phEta(event, "prompt",pt_min=pt_min,eta_max=eta_max)
+        SAMuons_phPhi_displaced_event=get_SAMuons_phPhi(event, "displaced",pt_min=pt_min,eta_max=eta_max)
+        SAMuons_phPhi_prompt_event=get_SAMuons_phPhi(event, "prompt",pt_min=pt_min,eta_max=eta_max)
+        SAMuons_phZ0_displaced_event=get_SAMuons_phZ0(event, "displaced",pt_min=pt_min,eta_max=eta_max)
+        SAMuons_phZ0_prompt_event=get_SAMuons_phZ0(event, "prompt",pt_min=pt_min,eta_max=eta_max)
         samuon_z_all_prompt_glob.extend(SAMuons_phZ0_prompt_event)
         samuon_z_all_displaced_glob.extend(SAMuons_phZ0_displaced_event)
-        SAMuons_hwZ0_displaced_event=get_SAMuons_hwZ0(event, "displaced",pt_min=3,eta_max=eta_max)
-        SAMuons_hwZ0_prompt_event=get_SAMuons_hwZ0(event, "prompt",pt_min=3,eta_max=eta_max)
-        SAMuons_hwD0_displaced_event=get_SAMuons_hwD0(event, "displaced",pt_min=3,eta_max=eta_max)
-        SAMuons_hwD0_prompt_event=get_SAMuons_hwD0(event, "prompt",pt_min=3,eta_max=eta_max)
+        SAMuons_hwZ0_displaced_event=get_SAMuons_hwZ0(event, "displaced",pt_min=pt_min,eta_max=eta_max)
+        SAMuons_hwZ0_prompt_event=get_SAMuons_hwZ0(event, "prompt",pt_min=pt_min,eta_max=eta_max)
+        SAMuons_hwD0_displaced_event=get_SAMuons_hwD0(event, "displaced",pt_min=pt_min,eta_max=eta_max)
+        SAMuons_hwD0_prompt_event=get_SAMuons_hwD0(event, "prompt",pt_min=pt_min,eta_max=eta_max)
         samuon_hwZ0_prompt_glob.extend(SAMuons_hwZ0_prompt_event)
         samuon_hwZ0_displaced_glob.extend(SAMuons_hwZ0_displaced_event)
         samuon_hwD0_prompt_glob.extend(SAMuons_hwD0_prompt_event)
@@ -307,6 +325,8 @@ def event_loop(event_num, thetaDigi, eta_max, local_dataset=None,eos_dataset=Non
                 gen_vz_SAMuons_displaced_matched_glob.append(gen_vz_event[mu_idx])
                 samuon_hwZ0_displaced_matched_glob.append(SAMuons_hwZ0_displaced_event[SAMuons_idx])
                 samuon_hwD0_displaced_matched_glob.append(SAMuons_hwD0_displaced_event[SAMuons_idx])
+                samuon_phPt_displaced_matched_glob.append(SAMuons_phPt_displaced_event[SAMuons_idx])
+                gen_d3d_SAMuons_displaced_drmatched_glob.append(gen_d3d_event[mu_idx])
                 gen_pt_SAMuons_displaced_drmatched_glob.append(gen_pt_event[mu_idx])
 
 
@@ -349,6 +369,8 @@ def event_loop(event_num, thetaDigi, eta_max, local_dataset=None,eos_dataset=Non
         "mu_id":mu_id_glob, 
         "gen_curv":gen_curv_glob, 
         "gen_pt_unmatched":gen_pt_unmatched_glob, 
+        "gen_eta_unmatched_full":gen_eta_unmatched_full_glob,
+        "gen_d3d_unmatched_full":gen_d3d_unmatched_full_glob,
         "gen_pt_KMTFTracks_matched":gen_pt_KMTFTracks_matched_glob,
         "gen_pt_KMTF_displaced_matched":gen_pt_KMTF_matched_displaced_glob, 
         "gen_pt_KMTF_prompt_matched":gen_pt_KMTF_matched_prompt_glob,
@@ -384,7 +406,11 @@ def event_loop(event_num, thetaDigi, eta_max, local_dataset=None,eos_dataset=Non
         "samuon_hwD0_displaced":samuon_hwD0_displaced_glob,
         "kmtf_dxy": kmtf_dxy_glob,
         "samuon_hwD0_displaced_matched":samuon_hwD0_displaced_matched_glob,
+        "samuon_phPt_displaced_matched":samuon_phPt_displaced_matched_glob,
         "gen_pt_SAMuons_displaced_drmatched":gen_pt_SAMuons_displaced_drmatched_glob,
-
+        "gen_d3d_SAMuons_displaced_drmatched":gen_d3d_SAMuons_displaced_drmatched_glob,
+        "samuon_maxpt_event_prompt":samuon_maxpt_event_prompt_glob,
+        "samuon_maxpt_event_displaced":samuon_maxpt_event_displaced_glob,
+        "n_events":n_events_processed,
         }
     return return_dict

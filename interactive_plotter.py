@@ -1670,8 +1670,7 @@ def _fill_dxy_vs_z_KMTF_TH2(datasets,legend_label,out_name,title,show=False,xran
     c.SaveAs(f"{direc}/{out_name}.png")
     return c,h
 
-def plot_dxy_vs_z_KMTFTrack(prompt_data=None,disp_data1=None,disp_data2=None,disp_data3=None,MB_data=None,
-                            show=False,xrange=None,yrange=None,xbins=100,ybins=100):
+def plot_dxy_vs_z_KMTFTrack(prompt_data=None,disp_data1=None,disp_data2=None,disp_data3=None,MB_data=None, show=False,xrange=None,yrange=None,xbins=100,ybins=100):
     results={}
     if prompt_data is not None:
         results["prompt"]=_fill_dxy_vs_z_KMTF_TH2(
@@ -1691,37 +1690,52 @@ def plot_dxy_vs_z_KMTFTrack(prompt_data=None,disp_data1=None,disp_data2=None,dis
             show=show,xrange=xrange,yrange=yrange,xbins=xbins,ybins=ybins)
     return results
 
-def plot_eff_vs_pT_SAMuon_d0z0(data,d0_cut=10,z0_cut=5,show=False,pt_bins=(0,5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100,105,110,115,120),title=None,color=ROOT.kBlue):
+def plot_eff_vs_pT_SAMuon_d0z0(data1=None,data2=None,data3=None,d0_cut=10,z0_cut=5,eta_cut=0.83,pt_cut=5,show=False,pt_bins=(0,5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100,105,110,115,120),title=None,legend_text="displaced SAMuon",color=ROOT.kBlue):
+    global _simple_plot_call_count
+    _simple_plot_call_count += 1
+    uniq=f"samuon_eff_d0z0_{_simple_plot_call_count}"
     if not show:
         ROOT.gROOT.SetBatch(True)
     direc=make_plot_dir("samuon_eff_vs_pt")
     if title is None:
-        title=f"SAMuon efficiency vs gen p_{{T}} (|hwD0|>{d0_cut} OR |hwZ0|>{z0_cut});gen p_{{T}} [GeV];Efficiency"
-    gen_pt=np.array(data["gen_pt_SAMuons_displaced_drmatched"],dtype=float)
-    hwD0=np.array(data["samuon_hwD0_displaced_matched"],dtype=float)
-    hwZ0=np.array(data["samuon_hwZ0_displaced_matched"],dtype=float)
-    if not (len(gen_pt)==len(hwD0)==len(hwZ0)):
-        raise ValueError("matched gen_pt, hwD0, hwZ0 arrays must be the same length.")
-    mask=(np.abs(hwD0)>d0_cut)|(np.abs(hwZ0)>z0_cut)
-    num_pt=gen_pt[mask]
+        title=f"SAMuon efficiency vs gen p_{{T}} (p_{{T}}>{pt_cut} & |#eta|<{eta_cut} & |hwD0|>{d0_cut} OR |hwZ0|>{z0_cut});gen p_{{T}} [GeV];Efficiency"
+    datasets=[d for d in (data1,data2,data3) if d is not None]
+    if not datasets:
+        raise ValueError("at least one of data1, data2, data3 must be provided.")
     bins=array('d',pt_bins)
-    hDen=ROOT.TH1D("hDen_samuon",";gen p_{T} [GeV];Efficiency",len(pt_bins)-1,bins)
-    hNum=ROOT.TH1D("hNum_samuon",";gen p_{T} [GeV];Efficiency",len(pt_bins)-1,bins)
+    hDen=ROOT.TH1D(f"hDen_{uniq}",";gen p_{T} [GeV];Efficiency",len(pt_bins)-1,bins)
+    hNum=ROOT.TH1D(f"hNum_{uniq}",";gen p_{T} [GeV];Efficiency",len(pt_bins)-1,bins)
     hDen.SetDirectory(0);hNum.SetDirectory(0)
-    for pt in data["gen_pt_unmatched"]:
-        hDen.Fill(float(pt))
-    for pt in num_pt:
-        hNum.Fill(float(pt))
+    n_pass=0;n_tot=0
+    for data in datasets:
+        gen_pt=np.array(data["gen_pt_SAMuons_displaced_drmatched"],dtype=float)
+        gen_eta=np.array(data["gen_eta_SAMuons_displaced_allmatched"],dtype=float)
+        sa_pt=np.array(data["samuon_phPt_displaced_matched"],dtype=float)
+        hwD0=np.array(data["samuon_hwD0_displaced_matched"],dtype=float)
+        hwZ0=np.array(data["samuon_hwZ0_displaced_matched"],dtype=float)
+        if not (len(gen_pt)==len(gen_eta)==len(sa_pt)==len(hwD0)==len(hwZ0)):
+            raise ValueError("matched gen_pt, gen_eta, sa_pt, hwD0, hwZ0 arrays must be the same length.")
+        mask=(sa_pt>pt_cut)&(np.abs(gen_eta)<eta_cut)&((np.abs(hwD0)>d0_cut)|(np.abs(hwZ0)>z0_cut))
+        num_pt=gen_pt[mask]
+        n_pass+=int(mask.sum());n_tot+=len(mask)
+        den_pt=np.array(data["gen_pt_unmatched"],dtype=float)
+        den_eta=np.array(data["gen_eta_unmatched_full"],dtype=float)
+        if len(den_pt)!=len(den_eta):
+            raise ValueError("gen_pt_unmatched and gen_eta_unmatched_full must be the same length.")
+        for pt in den_pt[np.abs(den_eta)<eta_cut]:
+            hDen.Fill(float(pt))
+        for pt in num_pt:
+            hNum.Fill(float(pt))
     eff=ROOT.TEfficiency(hNum,hDen)
-    eff.SetName("eff_samuon_d0z0")
+    eff.SetName(f"eff_{uniq}")
     eff.SetTitle(title)
     eff.SetLineColor(color);eff.SetMarkerColor(color);eff.SetMarkerStyle(20)
-    c=ROOT.TCanvas("c_samuon_eff_d0z0","",800,600)
+    c=ROOT.TCanvas(f"c_{uniq}","",800,600)
     eff.Draw("AP")
     leg=ROOT.TLegend(0.40,0.20,0.88,0.32)
-    leg.SetBorderSize(0);leg.SetFillStyle(0);leg.SetTextSize(0.030)
-    leg.AddEntry(eff,"displaced SAMuon","lp")
-    leg.AddEntry(0,f"|hwD0|>{d0_cut} OR |hwZ0|>{z0_cut} ({int(mask.sum())}/{len(mask)})","")
+    leg.SetBorderSize(0.1);leg.SetFillStyle(0);leg.SetTextSize(0.030)
+    leg.AddEntry(eff,legend_text,"lp")
+    #leg.AddEntry(0,f"SAMuon p_{{T}}>{pt_cut}, |#eta|<{eta_cut}, |hwD0|>{d0_cut} OR |hwZ0|>{z0_cut} ({n_pass}/{n_tot})","")
     leg.Draw()
     c.SaveAs(f"{direc}/samuon_eff_vs_pt_d0z0.png")
     f=ROOT.TFile("samuon_eff_vs_pt_d0z0.root","RECREATE")
@@ -1732,3 +1746,261 @@ def plot_eff_vs_pT_SAMuon_d0z0(data,d0_cut=10,z0_cut=5,show=False,pt_bins=(0,5,1
     store_plots["histos"]["eff_samuon_d0z0"]=eff
     store_plots["histos"]["eff_samuon_d0z0_legend"]=leg
     return c,eff
+
+def plot_eff_vs_d3d_SAMuon(data1=None,data2=None,data3=None,d3d_cut=10,eta_cut=0.83,gen_pt_cut=20,sa_pt_cut=5,show=False,d3d_bins=None,n_bins=30,title=None,legend_text="displaced SAMuon",color=ROOT.kBlue,color_nocut=ROOT.kRed):
+    global _simple_plot_call_count
+    _simple_plot_call_count += 1
+    uniq=f"samuon_eff_d3d_{_simple_plot_call_count}"
+    if not show:
+        ROOT.gROOT.SetBatch(True)
+    direc=make_plot_dir("samuon_eff_vs_d3d")
+    if title is None:
+        title=f"SAMuon efficiency vs gen d3d (gen p_{{T}}>{gen_pt_cut}, SAMuon p_{{T}}>{sa_pt_cut}, |#eta|<{eta_cut});gen d3d [cm];Efficiency"
+    datasets=[d for d in (data1,data2,data3) if d is not None]
+    if not datasets:
+        raise ValueError("at least one of data1, data2, data3 must be provided.")
+    #first pass: collect the gen d3d that pass the cuts across all datasets, for the denominator
+    #and for TWO numerators - one WITH the SAMuon d3d cut and one WITHOUT it. we bin only after
+    #seeing the data so the default range covers everything (no silent overflow).
+    num_with_chunks=[];num_nocut_chunks=[];den_chunks=[]
+    n_with=0;n_nocut=0;n_tot=0
+    for data in datasets:
+        #numerator base: gen muons dr-matched to a displaced SAMuon, with gen pT>gen_pt_cut,
+        #the matched SAMuon's reco pT>sa_pt_cut (numerator-only), and |gen eta|<eta_cut. the
+        #"with" numerator additionally requires reco d3d=sqrt(hwD0^2+hwZ0^2)>d3d_cut. all arrays
+        #are filled together per matched muon upstream, so they are index-aligned. plotted vs gen d3d.
+        gen_d3d=np.array(data["gen_d3d_SAMuons_displaced_drmatched"],dtype=float)
+        gen_pt=np.array(data["gen_pt_SAMuons_displaced_drmatched"],dtype=float)
+        gen_eta=np.array(data["gen_eta_SAMuons_displaced_allmatched"],dtype=float)
+        sa_pt=np.array(data["samuon_phPt_displaced_matched"],dtype=float)
+        hwD0=np.array(data["samuon_hwD0_displaced_matched"],dtype=float)
+        hwZ0=np.array(data["samuon_hwZ0_displaced_matched"],dtype=float)
+        if not (len(gen_d3d)==len(gen_pt)==len(gen_eta)==len(sa_pt)==len(hwD0)==len(hwZ0)):
+            raise ValueError("matched gen_d3d, gen_pt, gen_eta, sa_pt, hwD0, hwZ0 arrays must be the same length.")
+        sa_d3d=np.sqrt(hwD0**2+hwZ0**2)
+        base=(gen_pt>gen_pt_cut)&(sa_pt>sa_pt_cut)&(np.abs(gen_eta)<eta_cut)
+        mask_nocut=base
+        mask_with=base&(sa_d3d>d3d_cut)
+        num_nocut_chunks.append(gen_d3d[mask_nocut])
+        num_with_chunks.append(gen_d3d[mask_with])
+        n_nocut+=int(mask_nocut.sum());n_with+=int(mask_with.sum());n_tot+=len(base)
+        #denominator: all gen muons with gen pT>gen_pt_cut and |gen eta|<eta_cut (NO pT-reco, NO
+        #d3d cut), binned by gen d3d. gen_d3d_unmatched_full / gen_pt_unmatched /
+        #gen_eta_unmatched_full are all aligned 1:1 (same all-gen selection).
+        den_d3d=np.array(data["gen_d3d_unmatched_full"],dtype=float)
+        den_pt=np.array(data["gen_pt_unmatched"],dtype=float)
+        den_eta=np.array(data["gen_eta_unmatched_full"],dtype=float)
+        if not (len(den_d3d)==len(den_pt)==len(den_eta)):
+            raise ValueError("gen_d3d_unmatched_full, gen_pt_unmatched, gen_eta_unmatched_full must be the same length.")
+        den_mask=(den_pt>gen_pt_cut)&(np.abs(den_eta)<eta_cut)
+        den_chunks.append(den_d3d[den_mask])
+    num_with_vals=np.concatenate(num_with_chunks) if num_with_chunks else np.array([],dtype=float)
+    num_nocut_vals=np.concatenate(num_nocut_chunks) if num_nocut_chunks else np.array([],dtype=float)
+    den_vals=np.concatenate(den_chunks) if den_chunks else np.array([],dtype=float)
+    #binning: if d3d_bins not given, auto-range from 0 to the max gen d3d in the denominator
+    #(the full population) so no entry falls in the overflow bin and gets dropped by TEfficiency.
+    if d3d_bins is None:
+        dmax=float(den_vals.max()) if len(den_vals)>0 else 1.0
+        if not dmax>0:
+            dmax=1.0
+        edges=np.linspace(0.0,dmax*1.02,n_bins+1)
+        bins=array('d',edges);nb=n_bins
+    else:
+        bins=array('d',d3d_bins);nb=len(d3d_bins)-1
+    #count anything beyond the last edge so silent overflow loss is visible (only possible with
+    #user-supplied d3d_bins; the auto range above already covers the data).
+    last_edge=float(bins[len(bins)-1])
+    n_over_den=int(np.sum(den_vals>last_edge));n_over_num=int(np.sum(num_nocut_vals>last_edge))
+    hDen=ROOT.TH1D(f"hDen_{uniq}",";gen d3d [cm];Efficiency",nb,bins)
+    hNumWith=ROOT.TH1D(f"hNumWith_{uniq}",";gen d3d [cm];Efficiency",nb,bins)
+    hNumNoCut=ROOT.TH1D(f"hNumNoCut_{uniq}",";gen d3d [cm];Efficiency",nb,bins)
+    hDen.SetDirectory(0);hNumWith.SetDirectory(0);hNumNoCut.SetDirectory(0)
+    for d in den_vals:
+        hDen.Fill(float(d))
+    for d in num_with_vals:
+        hNumWith.Fill(float(d))
+    for d in num_nocut_vals:
+        hNumNoCut.Fill(float(d))
+    if n_over_den>0 or n_over_num>0:
+        print(f"[plot_eff_vs_d3d_SAMuon] WARNING: {n_over_den} denom / {n_over_num} num entries are above the last d3d bin edge ({last_edge:g} cm) and were NOT counted (overflow). Widen d3d_bins to keep them.")
+    effNoCut=ROOT.TEfficiency(hNumNoCut,hDen)
+    effWith=ROOT.TEfficiency(hNumWith,hDen)
+    effNoCut.SetName(f"eff_nocut_{uniq}");effWith.SetName(f"eff_with_{uniq}")
+    effNoCut.SetTitle(title)
+    effNoCut.SetLineColor(color_nocut);effNoCut.SetMarkerColor(color_nocut);effNoCut.SetMarkerStyle(21)
+    effWith.SetLineColor(color);effWith.SetMarkerColor(color);effWith.SetMarkerStyle(20)
+    c=ROOT.TCanvas(f"c_{uniq}","",800,600)
+    effNoCut.Draw("AP")
+    effWith.Draw("P SAME")
+    leg=ROOT.TLegend(0.40,0.78,0.88,0.88)
+    leg.SetBorderSize(1);leg.SetFillStyle(0);leg.SetTextSize(0.028)
+    leg.AddEntry(0,f"gen p_{{T}}>{gen_pt_cut} && SAMuon p_{{T}}>{sa_pt_cut} && |#eta|<{eta_cut}","")
+    leg.AddEntry(effNoCut,f"{legend_text}, no d3d cut","lp")
+    leg.AddEntry(effWith,f"{legend_text}, d3d>{d3d_cut}","lp")
+    leg.Draw()
+    c.SaveAs(f"{direc}/samuon_eff_vs_d3d.png")
+    f=ROOT.TFile("samuon_eff_vs_d3d.root","RECREATE")
+    hDen.Write();hNumWith.Write();hNumNoCut.Write();effWith.Write();effNoCut.Write();c.Write();f.Close()
+    store_plots["canvas"]["samuon_eff_vs_d3d"]=c
+    store_plots["histos"]["hDen_samuon_d3d"]=hDen
+    store_plots["histos"]["hNumWith_samuon_d3d"]=hNumWith
+    store_plots["histos"]["hNumNoCut_samuon_d3d"]=hNumNoCut
+    store_plots["histos"]["eff_with_samuon_d3d"]=effWith
+    store_plots["histos"]["eff_nocut_samuon_d3d"]=effNoCut
+    store_plots["histos"]["eff_samuon_d3d_legend"]=leg
+    return c,effWith,effNoCut
+
+def plot_rate_SAMuon(data,vertex="displaced",bunchfactor=40000*2760.0/3564.0,n_bins=20,pt_min=0,pt_max=100,show=False,logy=True,title=None,legend_text=None,color=ROOT.kBlue, draw_opt="HIST"):
+    #  1) per event take the leading (max pT) SAMuon pT (collected upstream in event_loop),
+    #  2) fill a pT histogram once per event,
+    #  3) reverse-cumulative (GetCumulative(False)) -> # events with leading pT >= threshold,
+    #  4) Scale(bunchfactor/n_events) -> rate in kHz.
+    global _simple_plot_call_count
+    _simple_plot_call_count += 1
+    uniq=f"samuon_rate_{vertex}_{_simple_plot_call_count}"
+    key=f"samuon_maxpt_event_{vertex}"
+    if not show:
+        ROOT.gROOT.SetBatch(True)
+    direc=make_plot_dir("samuon_rate")
+    if key not in data:
+        raise KeyError(f"'{key}' not in data - rerun event_loop so the per-event leading SAMuon pT is collected.")
+    maxpt=np.array(data[key],dtype=float)
+    n_events=int(data.get("n_events",0))
+    if n_events<=0:
+        raise ValueError("data['n_events'] must be >0 to scale the rate (rerun event_loop).")
+    if title is None:
+        title=f"{vertex} SAMuon trigger rate;L1 p_{{T}} threshold [GeV];Rate [kHz]"
+    if legend_text is None:
+        legend_text=f"{vertex} SAMuon"
+    hRate=ROOT.TH1D(f"hRate_{uniq}",title,n_bins,pt_min,pt_max)
+    hRate.SetDirectory(0)
+    hRate.SetStats(0)
+    for pt in maxpt:
+        hRate.Fill(float(pt))
+    rate=hRate.GetCumulative(False)
+    rate.SetDirectory(0)
+    rate.Scale(float(bunchfactor)/float(n_events))
+    rate.SetName(f"rate_{uniq}")
+    rate.SetTitle(title)
+    rate.SetLineColor(color);rate.SetMarkerColor(color);rate.SetMarkerStyle(20);rate.SetLineWidth(2)
+    c=ROOT.TCanvas(f"c_{uniq}","",800,600)
+    if logy:
+        c.SetLogy()
+    rate.Draw(draw_opt)
+    leg=ROOT.TLegend(0.6,0.74,0.88,0.88)
+    leg.SetBorderSize(1);leg.SetFillStyle(0);leg.SetTextSize(0.030)
+    leg.AddEntry(rate,legend_text,"l")
+    leg.Draw()
+    
+    c.SaveAs(f"{direc}/samuon_rate_{vertex}.png")
+    f=ROOT.TFile(f"samuon_rate_{vertex}.root","RECREATE")
+    hRate.Write();rate.Write();c.Write();f.Close()
+    store_plots["canvas"][f"samuon_rate_{vertex}"]=c
+    store_plots["histos"][f"hRate_samuon_{vertex}"]=hRate
+    store_plots["histos"][f"rate_samuon_{vertex}"]=rate
+    store_plots["histos"][f"rate_samuon_{vertex}_legend"]=leg
+    return c,rate
+
+def plot_rate_SAMuon_overlay(data,bunchfactor=40000*2760.0/3564.0,n_bins=100,pt_min=0,pt_max=100,show=False,logy=True,draw_opt="HIST",title=None,color_prompt=ROOT.kRed,color_displaced=ROOT.kBlue):
+    global _simple_plot_call_count
+    _simple_plot_call_count += 1
+    uniq=f"samuon_rate_overlay_{_simple_plot_call_count}"
+    if not show:
+        ROOT.gROOT.SetBatch(True)
+    direc=make_plot_dir("samuon_rate")
+    n_events=int(data.get("n_events",0))
+    if n_events<=0:
+        raise ValueError("data['n_events'] must be >0 to scale the rate (rerun event_loop).")
+    if title is None:
+        title="SAMuon trigger rate (prompt vs displaced);L1 p_{T} threshold [GeV];Rate [kHz]"
+    def _make_rate(vertex):
+        key=f"samuon_maxpt_event_{vertex}"
+        if key not in data:
+            raise KeyError(f"'{key}' not in data - rerun event_loop so the per-event leading SAMuon pT is collected.")
+        maxpt=np.array(data[key],dtype=float)
+        h=ROOT.TH1D(f"hRate_{vertex}_{uniq}",title,n_bins,pt_min,pt_max)
+        h.SetDirectory(0)
+        for pt in maxpt:
+            h.Fill(float(pt))
+        nb_x=h.GetNbinsX()
+        h.SetBinContent(nb_x,h.GetBinContent(nb_x)+h.GetBinContent(nb_x+1))
+        h.SetBinContent(nb_x+1,0.0)
+        r=h.GetCumulative(False)
+        r.SetDirectory(0)
+        r.Scale(float(bunchfactor)/float(n_events))
+        r.SetName(f"rate_{vertex}_{uniq}")
+        r.SetTitle(title)
+        h.SetStats(0)
+        r.SetStats(0)
+        return h,r,int(len(maxpt))
+    hP,rateP,nP=_make_rate("prompt")
+    hD,rateD,nD=_make_rate("displaced")
+    rateP.SetLineColor(color_prompt);rateP.SetMarkerColor(color_prompt);rateP.SetMarkerStyle(20);rateP.SetLineWidth(2)
+    rateD.SetLineColor(color_displaced);rateD.SetMarkerColor(color_displaced);rateD.SetMarkerStyle(21);rateD.SetLineWidth(2)
+    c=ROOT.TCanvas(f"c_{uniq}","",800,600)
+    if logy:
+        c.SetLogy()
+    rateD.Draw(draw_opt)
+    rateP.Draw(draw_opt+" SAME")
+    leg=ROOT.TLegend(0.6,0.74,0.88,0.88)
+    leg.SetBorderSize(1);leg.SetFillStyle(0);leg.SetTextSize(0.030)
+    leg.AddEntry(rateD,"displaced SAMuon","l")
+    leg.AddEntry(rateP,"prompt SAMuon","l")
+    leg.AddEntry(0,f"{n_events} events","")
+    leg.Draw()
+    c.SaveAs(f"{direc}/samuon_rate_overlay.png")
+    f=ROOT.TFile("samuon_rate_overlay.root","RECREATE")
+    hP.Write();hD.Write();rateP.Write();rateD.Write();c.Write();f.Close()
+    store_plots["canvas"]["samuon_rate_overlay"]=c
+    store_plots["histos"]["hRate_prompt_overlay"]=hP
+    store_plots["histos"]["hRate_displaced_overlay"]=hD
+    store_plots["histos"]["rate_prompt_overlay"]=rateP
+    store_plots["histos"]["rate_displaced_overlay"]=rateD
+    store_plots["histos"]["rate_overlay_legend"]=leg
+    return c,rateP,rateD
+
+def plot_leading_pt_spectrum_SAMuon(data,n_bins=100,pt_min=0,pt_max=100,show=False,logy=True,draw_opt="HIST",title=None,color_prompt=ROOT.kRed,color_displaced=ROOT.kBlue):
+    global _simple_plot_call_count
+    _simple_plot_call_count += 1
+    uniq=f"samuon_leadpt_{_simple_plot_call_count}"
+    if not show:
+        ROOT.gROOT.SetBatch(True)
+    direc=make_plot_dir("samuon_leading_pt")
+    if title is None:
+        title="Leading SAMuon p_{T} per event (prompt vs displaced);leading L1 p_{T} [GeV];events / bin"
+    def _make_spectrum(vertex):
+        key=f"samuon_maxpt_event_{vertex}"
+        if key not in data:
+            raise KeyError(f"'{key}' not in data - rerun event_loop so the per-event leading SAMuon pT is collected.")
+        maxpt=np.array(data[key],dtype=float)
+        h=ROOT.TH1D(f"hLeadPt_{vertex}_{uniq}",title,n_bins,pt_min,pt_max)
+        h.SetDirectory(0);h.SetStats(0)
+        for pt in maxpt:
+            h.Fill(float(pt))
+        return h,int(len(maxpt))
+    hP,nP=_make_spectrum("prompt")
+    hD,nD=_make_spectrum("displaced")
+    hP.SetLineColor(color_prompt);hP.SetMarkerColor(color_prompt);hP.SetLineWidth(2)
+    hD.SetLineColor(color_displaced);hD.SetMarkerColor(color_displaced);hD.SetLineWidth(2)
+    c=ROOT.TCanvas(f"c_{uniq}","",800,600)
+    if logy:
+        c.SetLogy()
+    ymax=1.4*max(hP.GetMaximum(),hD.GetMaximum(),1.0)
+    hD.SetMaximum(ymax)
+    if logy:
+        hD.SetMinimum(0.5)
+    hD.Draw(draw_opt)
+    hP.Draw(draw_opt+" SAME")
+    leg=ROOT.TLegend(0.45,0.72,0.88,0.88)
+    leg.SetBorderSize(0);leg.SetFillStyle(0);leg.SetTextSize(0.030)
+    leg.AddEntry(hD,f"displaced SAMuon ({nD})","l")
+    leg.AddEntry(hP,f"prompt SAMuon ({nP})","l")
+    leg.Draw()
+    c.SaveAs(f"{direc}/samuon_leading_pt_spectrum.png")
+    f=ROOT.TFile("samuon_leading_pt_spectrum.root","RECREATE")
+    hP.Write();hD.Write();c.Write();f.Close()
+    store_plots["canvas"]["samuon_leading_pt_spectrum"]=c
+    store_plots["histos"]["hLeadPt_prompt"]=hP
+    store_plots["histos"]["hLeadPt_displaced"]=hD
+    store_plots["histos"]["hLeadPt_legend"]=leg
+    return c,hP,hD
