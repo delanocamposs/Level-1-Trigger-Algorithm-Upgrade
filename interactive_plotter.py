@@ -1850,26 +1850,29 @@ def plot_eff_vs_d3d_SAMuon(data1=None,data2=None,data3=None,d3d_cut=10,eta_cut=0
     store_plots["histos"]["eff_samuon_d3d_legend"]=leg
     return c,effWith,effNoCut
 
-def plot_rate_SAMuon(data,vertex="displaced",bunchfactor=40000*2760.0/3564.0,n_bins=20,pt_min=0,pt_max=100,show=False,logy=True,title=None,legend_text=None,color=ROOT.kBlue, draw_opt="HIST"):
-    #  1) per event take the leading (max pT) SAMuon pT (collected upstream in event_loop),
-    #  2) fill a pT histogram once per event,
-    #  3) reverse-cumulative (GetCumulative(False)) -> # events with leading pT >= threshold,
-    #  4) Scale(bunchfactor/n_events) -> rate in kHz.
+def plot_rate_SAMuon(data,vertex="displaced",eta_cut=0.83,d3d_cut=10,bunchfactor=40000*2760.0/3564.0,n_bins=20,pt_min=0,pt_max=100,show=False,logy=True,title=None,legend_text=None,color=ROOT.kBlue, draw_opt="HIST"):
     global _simple_plot_call_count
     _simple_plot_call_count += 1
     uniq=f"samuon_rate_{vertex}_{_simple_plot_call_count}"
-    key=f"samuon_maxpt_event_{vertex}"
+    key=f"samuon_rate_perevent_{vertex}"
     if not show:
         ROOT.gROOT.SetBatch(True)
     direc=make_plot_dir("samuon_rate")
     if key not in data:
-        raise KeyError(f"'{key}' not in data - rerun event_loop so the per-event leading SAMuon pT is collected.")
-    maxpt=np.array(data[key],dtype=float)
+        raise KeyError(f"'{key}' not in data - rerun event_loop so the per-event SAMuon (pt,eta,hwD0,hwZ0) tuples are collected.")
     n_events=int(data.get("n_events",0))
     if n_events<=0:
         raise ValueError("data['n_events'] must be >0 to scale the rate (rerun event_loop).")
+    d3d2_cut=d3d_cut*d3d_cut
+    leading=[]
+    for muons in data[key]:
+        passing=[pt for (pt,eta,hwD0,hwZ0) in muons
+                 if abs(eta)<eta_cut and (hwD0*hwD0+hwZ0*hwZ0)>d3d2_cut]
+        if passing:
+            leading.append(max(passing))
+    maxpt=np.array(leading,dtype=float)
     if title is None:
-        title=f"{vertex} SAMuon trigger rate;L1 p_{{T}} threshold [GeV];Rate [kHz]"
+        title=f"{vertex} SAMuon trigger rate (|#eta|<{eta_cut}, d_{{3d}}>{d3d_cut});L1 p_{{T}} threshold [GeV];Rate [kHz]"
     if legend_text is None:
         legend_text=f"{vertex} SAMuon"
     hRate=ROOT.TH1D(f"hRate_{uniq}",title,n_bins,pt_min,pt_max)
@@ -1879,6 +1882,7 @@ def plot_rate_SAMuon(data,vertex="displaced",bunchfactor=40000*2760.0/3564.0,n_b
         hRate.Fill(float(pt))
     rate=hRate.GetCumulative(False)
     rate.SetDirectory(0)
+    rate.SetStats(0)
     rate.Scale(float(bunchfactor)/float(n_events))
     rate.SetName(f"rate_{uniq}")
     rate.SetTitle(title)
@@ -1887,11 +1891,12 @@ def plot_rate_SAMuon(data,vertex="displaced",bunchfactor=40000*2760.0/3564.0,n_b
     if logy:
         c.SetLogy()
     rate.Draw(draw_opt)
-    leg=ROOT.TLegend(0.6,0.74,0.88,0.88)
-    leg.SetBorderSize(1);leg.SetFillStyle(0);leg.SetTextSize(0.030)
+    leg=ROOT.TLegend(0.40,0.78,0.88,0.88)
+    leg.SetBorderSize(1);leg.SetFillStyle(0);leg.SetTextSize(0.028)
     leg.AddEntry(rate,legend_text,"l")
+    leg.AddEntry(0,f"d_{{3d}}>{d3d_cut} && |#eta|<{eta_cut}","")
     leg.Draw()
-    
+
     c.SaveAs(f"{direc}/samuon_rate_{vertex}.png")
     f=ROOT.TFile(f"samuon_rate_{vertex}.root","RECREATE")
     hRate.Write();rate.Write();c.Write();f.Close()
@@ -1901,63 +1906,109 @@ def plot_rate_SAMuon(data,vertex="displaced",bunchfactor=40000*2760.0/3564.0,n_b
     store_plots["histos"][f"rate_samuon_{vertex}_legend"]=leg
     return c,rate
 
-def plot_rate_SAMuon_overlay(data,bunchfactor=40000*2760.0/3564.0,n_bins=100,pt_min=0,pt_max=100,show=False,logy=True,draw_opt="HIST",title=None,color_prompt=ROOT.kRed,color_displaced=ROOT.kBlue):
+def plot_rate_SAMuon(data, vertex="displaced", eta_cut=0.83, d3d_cut=10,bunchfactor=40000*2760.0/3564.0, n_bins=20, pt_min=0, pt_max=100,show=False, logy=True, title=None, legend_text=None,color=ROOT.kBlue, draw_opt="HIST",overlay=False, overlay_eta_cut=None, overlay_d3d_cut=None,overlay_color=ROOT.kRed, overlay_legend_text=None):
+
     global _simple_plot_call_count
     _simple_plot_call_count += 1
-    uniq=f"samuon_rate_overlay_{_simple_plot_call_count}"
+    uniq = f"samuon_rate_{vertex}_{_simple_plot_call_count}"
+    key  = f"samuon_rate_perevent_{vertex}"
+
     if not show:
         ROOT.gROOT.SetBatch(True)
-    direc=make_plot_dir("samuon_rate")
-    n_events=int(data.get("n_events",0))
-    if n_events<=0:
+    direc = make_plot_dir("samuon_rate")
+
+    if key not in data:
+        raise KeyError(f"'{key}' not in data - rerun event_loop so the per-event SAMuon "
+                       "(pt,eta,hwD0,hwZ0) tuples are collected.")
+    n_events = int(data.get("n_events", 0))
+    if n_events <= 0:
         raise ValueError("data['n_events'] must be >0 to scale the rate (rerun event_loop).")
-    if title is None:
-        title="SAMuon trigger rate (prompt vs displaced);L1 p_{T} threshold [GeV];Rate [kHz]"
-    def _make_rate(vertex):
-        key=f"samuon_maxpt_event_{vertex}"
-        if key not in data:
-            raise KeyError(f"'{key}' not in data - rerun event_loop so the per-event leading SAMuon pT is collected.")
-        maxpt=np.array(data[key],dtype=float)
-        h=ROOT.TH1D(f"hRate_{vertex}_{uniq}",title,n_bins,pt_min,pt_max)
-        h.SetDirectory(0)
+    def _make_rate(eta_c, d3d_c, name_suffix, hist_title):
+        d3d2 = d3d_c * d3d_c
+        leading = []
+        for muons in data[key]:
+            passing = [pt for (pt, eta, hwD0, hwZ0) in muons
+                       if abs(eta) < eta_c and (hwD0*hwD0 + hwZ0*hwZ0) >= d3d2]
+            if passing:
+                leading.append(max(passing))
+        maxpt = np.array(leading, dtype=float)
+
+        h = ROOT.TH1D(f"hRate_{name_suffix}", hist_title, n_bins, pt_min, pt_max)
+        h.SetDirectory(0); h.SetStats(0)
         for pt in maxpt:
             h.Fill(float(pt))
-        nb_x=h.GetNbinsX()
-        h.SetBinContent(nb_x,h.GetBinContent(nb_x)+h.GetBinContent(nb_x+1))
-        h.SetBinContent(nb_x+1,0.0)
-        r=h.GetCumulative(False)
-        r.SetDirectory(0)
-        r.Scale(float(bunchfactor)/float(n_events))
-        r.SetName(f"rate_{vertex}_{uniq}")
-        r.SetTitle(title)
-        h.SetStats(0)
-        r.SetStats(0)
-        return h,r,int(len(maxpt))
-    hP,rateP,nP=_make_rate("prompt")
-    hD,rateD,nD=_make_rate("displaced")
-    rateP.SetLineColor(color_prompt);rateP.SetMarkerColor(color_prompt);rateP.SetMarkerStyle(20);rateP.SetLineWidth(2)
-    rateD.SetLineColor(color_displaced);rateD.SetMarkerColor(color_displaced);rateD.SetMarkerStyle(21);rateD.SetLineWidth(2)
-    c=ROOT.TCanvas(f"c_{uniq}","",800,600)
+
+        r = h.GetCumulative(False)
+        r.SetDirectory(0); r.SetStats(0)
+        r.Scale(float(bunchfactor) / float(n_events))
+        r.SetName(f"rate_{name_suffix}")
+        r.SetTitle(hist_title)
+        return h, r
+    if title is None:
+        title = (f"{vertex} SAMuon trigger rate "
+                 f"(|#eta|<{eta_cut}, d_{{3d}}>{d3d_cut})"
+                 f";L1 p_{{T}} threshold [GeV];Rate [kHz]")
+    if legend_text is None:
+        legend_text = f"{vertex} SAMuon"
+
+    hRate, rate = _make_rate(eta_cut, d3d_cut, uniq, title)
+    rate.SetLineColor(color); rate.SetMarkerColor(color)
+    rate.SetMarkerStyle(20);  rate.SetLineWidth(2)
+    hRate2 = rate2 = None
+    if overlay:
+        ov_eta = overlay_eta_cut if overlay_eta_cut is not None else eta_cut
+        ov_d3d = overlay_d3d_cut if overlay_d3d_cut is not None else d3d_cut
+        if overlay_legend_text is None:
+            overlay_legend_text = f"{vertex} SAMuon (overlay)"
+
+        hRate2, rate2 = _make_rate(ov_eta, ov_d3d,
+                                   f"{uniq}_overlay",
+                                   title)          # same axis title
+        rate2.SetLineColor(overlay_color); rate2.SetMarkerColor(overlay_color)
+        rate2.SetMarkerStyle(24);          rate2.SetLineWidth(2)
+    c = ROOT.TCanvas(f"c_{uniq}", "", 800, 600)
     if logy:
         c.SetLogy()
-    rateD.Draw(draw_opt)
-    rateP.Draw(draw_opt+" SAME")
-    leg=ROOT.TLegend(0.6,0.74,0.88,0.88)
-    leg.SetBorderSize(1);leg.SetFillStyle(0);leg.SetTextSize(0.030)
-    leg.AddEntry(rateD,"displaced SAMuon","l")
-    leg.AddEntry(rateP,"prompt SAMuon","l")
-    leg.AddEntry(0,f"{n_events} events","")
+
+    rate.Draw(draw_opt)
+
+    if overlay and rate2 is not None:
+        # make sure the primary y-axis covers both histograms
+        ymax = max(rate.GetMaximum(), rate2.GetMaximum())
+        rate.GetYaxis().SetRangeUser(
+            rate.GetMinimum(1e-9) if logy else 0,
+            ymax * (10 if logy else 1.3)
+        )
+        rate2.Draw(f"{draw_opt} SAME")
+    leg_y1 = 0.68 if overlay else 0.78
+    leg = ROOT.TLegend(0.40, leg_y1, 0.88, 0.88)
+    leg.SetBorderSize(1); leg.SetFillStyle(0); leg.SetTextSize(0.028)
+
+    leg.AddEntry(rate, legend_text, "l")
+    leg.AddEntry(0, f"d_{{3d}}>{d3d_cut} && |#eta|<{eta_cut}", "")
+
+    if overlay and rate2 is not None:
+        leg.AddEntry(rate2, overlay_legend_text, "l")
+        leg.AddEntry(0, f"d_{{3d}}>{ov_d3d} && |#eta|<{ov_eta}", "")
+
     leg.Draw()
-    c.SaveAs(f"{direc}/samuon_rate_overlay.png")
-    f=ROOT.TFile("samuon_rate_overlay.root","RECREATE")
-    hP.Write();hD.Write();rateP.Write();rateD.Write();c.Write();f.Close()
-    store_plots["canvas"]["samuon_rate_overlay"]=c
-    store_plots["histos"]["hRate_prompt_overlay"]=hP
-    store_plots["histos"]["hRate_displaced_overlay"]=hD
-    store_plots["histos"]["rate_prompt_overlay"]=rateP
-    store_plots["histos"]["rate_displaced_overlay"]=rateD
-    store_plots["histos"]["rate_overlay_legend"]=leg
-    return c,rateP,rateD
+    c.SaveAs(f"{direc}/samuon_rate_{vertex}.png")
+
+    f = ROOT.TFile(f"samuon_rate_{vertex}.root", "RECREATE")
+    hRate.Write(); rate.Write()
+    if overlay and hRate2 is not None:
+        hRate2.Write(); rate2.Write()
+    c.Write(); f.Close()
+
+    store_plots["canvas"][f"samuon_rate_{vertex}"] = c
+    store_plots["histos"][f"hRate_samuon_{vertex}"] = hRate
+    store_plots["histos"][f"rate_samuon_{vertex}"]  = rate
+    store_plots["histos"][f"rate_samuon_{vertex}_legend"] = leg
+    if overlay and rate2 is not None:
+        store_plots["histos"][f"hRate_samuon_{vertex}_overlay"] = hRate2
+        store_plots["histos"][f"rate_samuon_{vertex}_overlay"]  = rate2
+
+    return c, rate
 
 def plot_leading_pt_spectrum_SAMuon(data,n_bins=100,pt_min=0,pt_max=100,show=False,logy=True,draw_opt="HIST",title=None,color_prompt=ROOT.kRed,color_displaced=ROOT.kBlue):
     global _simple_plot_call_count

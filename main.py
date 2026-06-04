@@ -63,6 +63,7 @@ def event_loop(event_num, thetaDigi, eta_max, pt_min, local_dataset=None,eos_dat
     gen_pt_unmatched_glob=[]
     gen_eta_unmatched_full_glob=[]
     gen_d3d_unmatched_full_glob=[]
+    _diag_d0_glob=[];_diag_z0_glob=[];_diag_lxy_glob=[];_diag_vz_glob=[];_diag_d3d_old_glob=[]
     gen_pt_KMTFTracks_matched_glob=[]
     gen_pt_KMTF_matched_displaced_glob=[]
     gen_pt_KMTF_matched_prompt_glob=[]
@@ -106,6 +107,8 @@ def event_loop(event_num, thetaDigi, eta_max, pt_min, local_dataset=None,eos_dat
     samuon_hwD0_displaced_glob=[]
     samuon_maxpt_event_prompt_glob=[]
     samuon_maxpt_event_displaced_glob=[]
+    samuon_rate_perevent_prompt_glob=[]
+    samuon_rate_perevent_displaced_glob=[]
     n_events_processed=0
 
     for i, event in enumerate(events):
@@ -126,8 +129,22 @@ def event_loop(event_num, thetaDigi, eta_max, pt_min, local_dataset=None,eos_dat
         gen_vy_event=get_gen_muons_vy(event,pt_min=pt_min,pt_max=1000,eta_max=eta_max)
         gen_vx_event=get_gen_muons_vx(event,pt_min=pt_min,pt_max=1000,eta_max=eta_max)
         gen_vr_event=np.sqrt((np.array(gen_vx_event))**2+(np.array(gen_vy_event))**2)
-        gen_d3d_event=np.sqrt((np.array(gen_vx_event))**2+(np.array(gen_vy_event))**2+(np.array(gen_vz_event))**2)
         gen_curv_event=get_gen_muons_curv(event, pt_min=pt_min, pt_max=1000,eta_max=eta_max)
+        #gen_d3d_event=np.sqrt((np.array(gen_vx_event))**2+(np.array(gen_vy_event))**2+(np.array(gen_vz_event))**2)
+        #-----------below is fuinding the d3d from phi, vx, vy--------------
+        gen_vx_arr=np.array(gen_vx_event)
+        gen_vy_arr=np.array(gen_vy_event) 
+        gen_vz_arr=np.array(gen_vz_event)
+        gen_phi_arr=np.array(gen_phi_event)
+        gen_eta_arr=np.array(gen_eta_event)
+        gen_d0_event=np.abs(gen_vx_arr*np.sin(gen_phi_arr)-gen_vy_arr*np.cos(gen_phi_arr))
+        gen_z0_event=gen_vz_arr-(gen_vx_arr*np.cos(gen_phi_arr)+gen_vy_arr*np.sin(gen_phi_arr))*np.sinh(gen_eta_arr)
+        gen_d3d_event=np.sqrt(gen_d0_event**2+gen_z0_event**2)
+        #------------------------------------------------------------
+        #stupid bug diagnostics 
+        _diag_d0_glob.extend(np.array(gen_d0_event));_diag_z0_glob.extend(np.array(gen_z0_event))
+        _diag_lxy_glob.extend(np.array(gen_vr_event));_diag_vz_glob.extend(np.abs(gen_vz_arr))
+        _diag_d3d_old_glob.extend(np.sqrt(gen_vx_arr**2+gen_vy_arr**2+gen_vz_arr**2))
     
         if len(gen_pt_event)!=len(gen_eta_event):
             print("ERROR: size mismatch")
@@ -230,12 +247,14 @@ def event_loop(event_num, thetaDigi, eta_max, pt_min, local_dataset=None,eos_dat
         gen_pt_unmatched_glob.extend(np.array(gen_pt_event)) #add unmatched gen muon pt to global array WITHOUT 20 GEV PT CUT! denom of efficiency curve. 
         gen_eta_unmatched_full_glob.extend(np.array(gen_eta_event)) #gen eta aligned 1:1 with gen_pt_unmatched_glob (same selection, no pT cut). used for plot-time eta cut on the denom.
         gen_d3d_unmatched_full_glob.extend(np.array(gen_d3d_event)) #gen d3d aligned 1:1 with gen_pt_unmatched_glob. denom x-axis for the efficiency-vs-d3d plot.
-        SAMuons_phPt_prompt_rate_event=get_SAMuons_phPt(event,"prompt",pt_min=pt_min,eta_max=eta_max)
-        SAMuons_phPt_displaced_rate_event=get_SAMuons_phPt(event,"displaced",pt_min=pt_min,eta_max=eta_max)
-        if len(SAMuons_phPt_prompt_rate_event)>0:
-            samuon_maxpt_event_prompt_glob.append(max(SAMuons_phPt_prompt_rate_event))
-        if len(SAMuons_phPt_displaced_rate_event)>0:
-            samuon_maxpt_event_displaced_glob.append(max(SAMuons_phPt_displaced_rate_event))
+        SAMuons_rate_prompt_event=get_SAMuons_rate_tuples(event,"prompt",pt_min=pt_min,eta_max=eta_max)
+        SAMuons_rate_displaced_event=get_SAMuons_rate_tuples(event,"displaced",pt_min=pt_min,eta_max=eta_max)
+        samuon_rate_perevent_prompt_glob.append(SAMuons_rate_prompt_event)
+        samuon_rate_perevent_displaced_glob.append(SAMuons_rate_displaced_event)
+        if len(SAMuons_rate_prompt_event)>0:
+            samuon_maxpt_event_prompt_glob.append(max(t[0] for t in SAMuons_rate_prompt_event))
+        if len(SAMuons_rate_displaced_event)>0:
+            samuon_maxpt_event_displaced_glob.append(max(t[0] for t in SAMuons_rate_displaced_event))
 
         KMTFTrack_eta_event=get_KMTFTrack_eta(event, thetaDigi, pt_min=pt_min, eta_max=eta_max)
         KMTFTrack_phi_event=get_KMTFTrack_phi(event, thetaDigi,pt_min=pt_min, eta_max=eta_max)
@@ -411,6 +430,8 @@ def event_loop(event_num, thetaDigi, eta_max, pt_min, local_dataset=None,eos_dat
         "gen_d3d_SAMuons_displaced_drmatched":gen_d3d_SAMuons_displaced_drmatched_glob,
         "samuon_maxpt_event_prompt":samuon_maxpt_event_prompt_glob,
         "samuon_maxpt_event_displaced":samuon_maxpt_event_displaced_glob,
-        "n_events":n_events_processed,
+        "samuon_rate_perevent_prompt":samuon_rate_perevent_prompt_glob,
+        "samuon_rate_perevent_displaced":samuon_rate_perevent_displaced_glob,
+        "n_events":n_events_processed
         }
     return return_dict

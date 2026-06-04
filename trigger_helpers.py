@@ -244,6 +244,12 @@ def get_SAMuons_hwPhi(event, vertex, pt_min=0, pt_max=1000, eta_max=1.3):
     val=[float(g.hwPhi()) for g in SAMuonshandle.product() if abs(g.phEta())<eta_max and pt_min<g.phPt()<pt_max]
     return val
 
+def get_SAMuons_rate_tuples(event, vertex, pt_min=0, pt_max=1000, eta_max=1.3):
+    event.getByLabel("gmtKMTFMuons",vertex,"L1P2GT2", SAMuonshandle)
+    out=[(float(g.phPt()),float(g.phEta()),float(g.hwD0()),float(g.hwZ0()))
+         for g in SAMuonshandle.product() if abs(g.phEta())<eta_max and pt_min<g.phPt()<pt_max]
+    return out
+
 def get_KMTFTrack_dxy(event, thetaDigi=True, pt_min=0, pt_max=1000, eta_max=1.3):
     event.getByLabel("gmtKMTFMuons", "kmtfTracks", "L1P2GT2", Trackshandle)
     tracks = Trackshandle.product()
