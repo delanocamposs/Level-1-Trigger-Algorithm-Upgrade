@@ -1747,7 +1747,7 @@ def plot_eff_vs_pT_SAMuon_d0z0(data1=None,data2=None,data3=None,d0_cut=10,z0_cut
     store_plots["histos"]["eff_samuon_d0z0_legend"]=leg
     return c,eff
 
-def plot_eff_vs_d3d_SAMuon(data1=None,data2=None,data3=None,d3d_cut=10,eta_cut=0.83,gen_pt_cut=20,sa_pt_cut=5,show=False,d3d_bins=None,n_bins=30,title=None,legend_text="displaced SAMuon",color=ROOT.kBlue,color_nocut=ROOT.kRed):
+def plot_eff_vs_d3d_SAMuon(data1=None,data2=None,data3=None,d3d_cut=100,d3d_cut2=50,eta_cut=0.83,gen_pt_cut=20,sa_pt_cut=5,show=False,d3d_bins=None,n_bins=30,title=None,legend_text="displaced SAMuon",color=ROOT.kBlue,color2=ROOT.kGreen+2,color_nocut=ROOT.kRed):
     global _simple_plot_call_count
     _simple_plot_call_count += 1
     uniq=f"samuon_eff_d3d_{_simple_plot_call_count}"
@@ -1759,8 +1759,8 @@ def plot_eff_vs_d3d_SAMuon(data1=None,data2=None,data3=None,d3d_cut=10,eta_cut=0
     datasets=[d for d in (data1,data2,data3) if d is not None]
     if not datasets:
         raise ValueError("at least one of data1, data2, data3 must be provided.")
-    num_with_chunks=[];num_nocut_chunks=[];den_chunks=[]
-    n_with=0;n_nocut=0;n_tot=0
+    num_with_chunks=[];num_with2_chunks=[];num_nocut_chunks=[];den_chunks=[]
+    n_with=0;n_with2=0;n_nocut=0;n_tot=0
     for data in datasets:
         gen_d3d=np.array(data["gen_d3d_SAMuons_displaced_drmatched"],dtype=float)
         gen_pt=np.array(data["gen_pt_SAMuons_displaced_drmatched"],dtype=float)
@@ -1776,9 +1776,11 @@ def plot_eff_vs_d3d_SAMuon(data1=None,data2=None,data3=None,d3d_cut=10,eta_cut=0
         base=(gen_pt>gen_pt_cut)&(sa_pt>sa_pt_cut)&(np.abs(gen_eta)<eta_cut)
         mask_nocut=base
         mask_with=base&(sa_d3d>d3d_cut)
+        mask_with2=base&(sa_d3d>d3d_cut2)
         num_nocut_chunks.append(gen_d3d[mask_nocut])
         num_with_chunks.append(gen_d3d[mask_with])
-        n_nocut+=int(mask_nocut.sum());n_with+=int(mask_with.sum());n_tot+=len(base)
+        num_with2_chunks.append(gen_d3d[mask_with2])
+        n_nocut+=int(mask_nocut.sum());n_with+=int(mask_with.sum());n_with2+=int(mask_with2.sum());n_tot+=len(base)
         den_d3d=np.array(data["gen_d3d_unmatched_full"],dtype=float)
         den_pt=np.array(data["gen_pt_unmatched"],dtype=float)
         den_eta=np.array(data["gen_eta_unmatched_full"],dtype=float)
@@ -1787,6 +1789,7 @@ def plot_eff_vs_d3d_SAMuon(data1=None,data2=None,data3=None,d3d_cut=10,eta_cut=0
         den_mask=(den_pt>gen_pt_cut)&(np.abs(den_eta)<eta_cut)
         den_chunks.append(den_d3d[den_mask])
     num_with_vals=np.concatenate(num_with_chunks) if num_with_chunks else np.array([],dtype=float)
+    num_with2_vals=np.concatenate(num_with2_chunks) if num_with2_chunks else np.array([],dtype=float)
     num_nocut_vals=np.concatenate(num_nocut_chunks) if num_nocut_chunks else np.array([],dtype=float)
     den_vals=np.concatenate(den_chunks) if den_chunks else np.array([],dtype=float)
     if d3d_bins is None:
@@ -1801,44 +1804,53 @@ def plot_eff_vs_d3d_SAMuon(data1=None,data2=None,data3=None,d3d_cut=10,eta_cut=0
     n_over_den=int(np.sum(den_vals>last_edge));n_over_num=int(np.sum(num_nocut_vals>last_edge))
     hDen=ROOT.TH1D(f"hDen_{uniq}",";gen d3d [cm];Efficiency",nb,bins)
     hNumWith=ROOT.TH1D(f"hNumWith_{uniq}",";gen d3d [cm];Efficiency",nb,bins)
+    hNumWith2=ROOT.TH1D(f"hNumWith2_{uniq}",";gen d3d [cm];Efficiency",nb,bins)
     hNumNoCut=ROOT.TH1D(f"hNumNoCut_{uniq}",";gen d3d [cm];Efficiency",nb,bins)
-    hDen.SetDirectory(0);hNumWith.SetDirectory(0);hNumNoCut.SetDirectory(0)
+    hDen.SetDirectory(0);hNumWith.SetDirectory(0);hNumWith2.SetDirectory(0);hNumNoCut.SetDirectory(0)
     for d in den_vals:
         hDen.Fill(float(d))
     for d in num_with_vals:
         hNumWith.Fill(float(d))
+    for d in num_with2_vals:
+        hNumWith2.Fill(float(d))
     for d in num_nocut_vals:
         hNumNoCut.Fill(float(d))
     if n_over_den>0 or n_over_num>0:
         print(f"[plot_eff_vs_d3d_SAMuon] WARNING: {n_over_den} denom / {n_over_num} num entries are above the last d3d bin edge ({last_edge:g} cm) and were NOT counted (overflow). Widen d3d_bins to keep them.")
     effNoCut=ROOT.TEfficiency(hNumNoCut,hDen)
     effWith=ROOT.TEfficiency(hNumWith,hDen)
-    effNoCut.SetName(f"eff_nocut_{uniq}");effWith.SetName(f"eff_with_{uniq}")
+    effWith2=ROOT.TEfficiency(hNumWith2,hDen)
+    effNoCut.SetName(f"eff_nocut_{uniq}");effWith.SetName(f"eff_with_{uniq}");effWith2.SetName(f"eff_with2_{uniq}")
     effNoCut.SetTitle(title)
     effNoCut.SetLineColor(color_nocut);effNoCut.SetMarkerColor(color_nocut);effNoCut.SetMarkerStyle(21)
     effWith.SetLineColor(color);effWith.SetMarkerColor(color);effWith.SetMarkerStyle(20)
+    effWith2.SetLineColor(color2);effWith2.SetMarkerColor(color2);effWith2.SetMarkerStyle(22)
     c=ROOT.TCanvas(f"c_{uniq}","",800,600)
     effNoCut.Draw("AP")
     effWith.Draw("P SAME")
-    leg=ROOT.TLegend(0.40,0.78,0.88,0.88)
+    effWith2.Draw("P SAME")
+    leg=ROOT.TLegend(0.40,0.73,0.88,0.88)
     leg.SetBorderSize(1);leg.SetFillStyle(0);leg.SetTextSize(0.028)
     leg.AddEntry(0,f"gen p_{{T}}>{gen_pt_cut} && SAMuon p_{{T}}>{sa_pt_cut} && |#eta|<{eta_cut}","")
     leg.AddEntry(effNoCut,f"{legend_text}, no d3d cut","lp")
     leg.AddEntry(effWith,f"{legend_text}, d3d>{d3d_cut} cm","lp")
+    leg.AddEntry(effWith2,f"{legend_text}, d3d>{d3d_cut2} cm","lp")
     leg.Draw()
     c.SaveAs(f"{direc}/samuon_eff_vs_d3d.png")
     f=ROOT.TFile("samuon_eff_vs_d3d.root","RECREATE")
-    hDen.Write();hNumWith.Write();hNumNoCut.Write();effWith.Write();effNoCut.Write();c.Write();f.Close()
+    hDen.Write();hNumWith.Write();hNumWith2.Write();hNumNoCut.Write();effWith.Write();effWith2.Write();effNoCut.Write();c.Write();f.Close()
     store_plots["canvas"]["samuon_eff_vs_d3d"]=c
     store_plots["histos"]["hDen_samuon_d3d"]=hDen
     store_plots["histos"]["hNumWith_samuon_d3d"]=hNumWith
+    store_plots["histos"]["hNumWith2_samuon_d3d"]=hNumWith2
     store_plots["histos"]["hNumNoCut_samuon_d3d"]=hNumNoCut
     store_plots["histos"]["eff_with_samuon_d3d"]=effWith
+    store_plots["histos"]["eff_with2_samuon_d3d"]=effWith2
     store_plots["histos"]["eff_nocut_samuon_d3d"]=effNoCut
     store_plots["histos"]["eff_samuon_d3d_legend"]=leg
-    return c,effWith,effNoCut
+    return c,effWith,effWith2,effNoCut
 
-def plot_rate_SAMuon(data, vertex="displaced", eta_cut=0.83, d3d_cut=100,bunchfactor=40000*2760.0/3564.0, n_bins=20, pt_min=0, pt_max=100,show=False, logy=True, title=None, legend_text=None,color=ROOT.kBlue, draw_opt="HIST",overlay=False, overlay_eta_cut=None, overlay_d3d_cut=None,overlay_color=ROOT.kRed, overlay_legend_text=None):
+def plot_rate_SAMuon(data, vertex="displaced", eta_cut=0.83, d3d_cut=100,bunchfactor=40000*2760.0/3564.0, n_bins=20, pt_min=0, pt_max=100,show=False, logy=True, title=None, legend_text=None,color=ROOT.kBlue, draw_opt="HIST",overlay=False, overlay_eta_cut=None, overlay_d3d_cut=None,overlay_color=ROOT.kRed, overlay_legend_text=None,overlay2=False, overlay2_eta_cut=None, overlay2_d3d_cut=50,overlay2_color=ROOT.kGreen+2, overlay2_legend_text=None):
     global _simple_plot_call_count
     _simple_plot_call_count += 1
     uniq = f"samuon_rate_{vertex}_{_simple_plot_call_count}"
@@ -1896,19 +1908,38 @@ def plot_rate_SAMuon(data, vertex="displaced", eta_cut=0.83, d3d_cut=100,bunchfa
         rate2.SetLineColor(overlay_color); rate2.SetMarkerColor(overlay_color)
         rate2.SetMarkerStyle(24);          rate2.SetLineWidth(2)
 
+    hRate3 = rate3 = None
+    if overlay2:
+        ov2_eta = overlay2_eta_cut if overlay2_eta_cut is not None else eta_cut
+        ov2_d3d = overlay2_d3d_cut if overlay2_d3d_cut is not None else d3d_cut
+        if overlay2_legend_text is None:
+            overlay2_legend_text = f"{vertex} SAMuon (overlay2)"
+        hRate3, rate3 = _make_rate(ov2_eta, ov2_d3d, f"{uniq}_overlay2", title)
+        rate3.SetLineColor(overlay2_color); rate3.SetMarkerColor(overlay2_color)
+        rate3.SetMarkerStyle(26);           rate3.SetLineWidth(2)
+
     c = ROOT.TCanvas(f"c_{uniq}", "", 800, 600)
     if logy:
         c.SetLogy()
     rate.Draw(draw_opt)
+    ymaxes = [rate.GetMaximum()]
     if overlay and rate2 is not None:
-        ymax = max(rate.GetMaximum(), rate2.GetMaximum())
+        ymaxes.append(rate2.GetMaximum())
+    if overlay2 and rate3 is not None:
+        ymaxes.append(rate3.GetMaximum())
+    if len(ymaxes) > 1:
+        ymax = max(ymaxes)
         rate.GetYaxis().SetRangeUser(
             rate.GetMinimum(1e-9) if logy else 0,
             ymax * (10 if logy else 1.3)
         )
+    if overlay and rate2 is not None:
         rate2.Draw(f"{draw_opt} SAME")
+    if overlay2 and rate3 is not None:
+        rate3.Draw(f"{draw_opt} SAME")
 
-    leg_y1 = 0.68 if overlay else 0.78
+    n_extra = (1 if overlay else 0) + (1 if overlay2 else 0)
+    leg_y1 = 0.78 - 0.05 * n_extra
     leg = ROOT.TLegend(0.40, leg_y1, 0.88, 0.88)
     leg.SetBorderSize(1); leg.SetFillStyle(0); leg.SetTextSize(0.028)
     leg.AddEntry(rate, legend_text, "l")
@@ -1916,6 +1947,9 @@ def plot_rate_SAMuon(data, vertex="displaced", eta_cut=0.83, d3d_cut=100,bunchfa
     if overlay and rate2 is not None:
         leg.AddEntry(rate2, overlay_legend_text, "l")
         leg.AddEntry(0, f"d_{{3d}}>{ov_d3d} cm && |#eta|<{ov_eta}", "")
+    if overlay2 and rate3 is not None:
+        leg.AddEntry(rate3, overlay2_legend_text, "l")
+        leg.AddEntry(0, f"d_{{3d}}>{ov2_d3d} cm && |#eta|<{ov2_eta}", "")
     leg.Draw()
 
     c.SaveAs(f"{direc}/samuon_rate_{vertex}.png")
@@ -1923,6 +1957,8 @@ def plot_rate_SAMuon(data, vertex="displaced", eta_cut=0.83, d3d_cut=100,bunchfa
     hRate.Write(); rate.Write()
     if overlay and hRate2 is not None:
         hRate2.Write(); rate2.Write()
+    if overlay2 and hRate3 is not None:
+        hRate3.Write(); rate3.Write()
     c.Write(); f.Close()
 
     store_plots["canvas"][f"samuon_rate_{vertex}"] = c
@@ -1932,6 +1968,9 @@ def plot_rate_SAMuon(data, vertex="displaced", eta_cut=0.83, d3d_cut=100,bunchfa
     if overlay and rate2 is not None:
         store_plots["histos"][f"hRate_samuon_{vertex}_overlay"] = hRate2
         store_plots["histos"][f"rate_samuon_{vertex}_overlay"]  = rate2
+    if overlay2 and rate3 is not None:
+        store_plots["histos"][f"hRate_samuon_{vertex}_overlay2"] = hRate3
+        store_plots["histos"][f"rate_samuon_{vertex}_overlay2"]  = rate3
 
     return c, rate
 
